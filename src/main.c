@@ -23,8 +23,20 @@ int main(int argc, char **argv) {
 
 	Color col1 = Color_create(rand() * 255, rand() * 255, rand() * 255);
 	Color col2 = Color_create(rand() * 255, rand() * 255, rand() * 255);
-	printf("Euclidean took %llu cycles on average.\n",
+	Color_calc_spaces(&col1);
+	Color_calc_spaces(&col2);
+	printf("Euclidean took %lu cycles on average.\n",
 	       time_diff(euclidean_diff, col1, col2, RUNS));
+	printf("Redmean took %lu cycles on average.\n",
+	       time_diff(redmean_diff, col1, col2, RUNS));
+	printf("Delta ok took %lu cycles on average.\n",
+	       time_diff(delta_ok_diff, col1, col2, RUNS));
+	printf("Delta cie76 took %lu cycles on average.\n",
+	       time_diff(delta_cie76_diff, col1, col2, RUNS));
+	printf("Delta cie94 took %lu cycles on average.\n",
+	       time_diff(delta_cie94_diff, col1, col2, RUNS));
+	printf("Delta ciede2000 took %lu cycles on average.\n",
+	       time_diff(delta_ciede2000_diff, col1, col2, RUNS));
 
 	return 0;
 }

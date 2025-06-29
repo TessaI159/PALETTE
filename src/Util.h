@@ -1,9 +1,10 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <stdint.h>
 typedef struct Color Color;
 
-unsigned long long time_diff(double (*func)(Color, Color), Color col1, Color col2,
-		const long int RUNS);
+uint64_t time_diff(float (*func)(Color *, Color *), Color col1, Color col2,
+		   const uint64_t RUNS);
 
 #endif

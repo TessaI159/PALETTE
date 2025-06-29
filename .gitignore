@@ -1,6 +1,8 @@
 .cache/
 .clang-format
 build/
+build_debug/
+build_release/
 .dir-locals.el
 src/.dir-locals.el
 compile_commands.json
