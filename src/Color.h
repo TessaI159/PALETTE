@@ -36,7 +36,7 @@ struct Color {
 };
 
 /* Must be constructed with rgb for now */
-struct Color Color_create(char r, char g, char b);
+struct Color Color_create(const char r, const char g, const char b);
 
 /* Calculates all spaces. Used for testing */
 void Color_calc_spaces(struct Color *color);
@@ -44,13 +44,13 @@ void Color_calc_spaces(struct Color *color);
 /* Euclidean srgb diff. ~30 cycles*/
 double euclidean_diff(const struct Color sam, const struct Color ref);
 /* Euclidean diff with color weights. ~30 cycles */
-double redmean_diff(struct Color *sam, struct Color *ref);
+double redmean_diff(const struct Color sam, const struct Color ref);
 /* Euclidean oklab diff. ~60 cycles */
-double delta_ok_diff(struct Color *sam, struct Color *ref);
+double delta_ok_diff(struct Color sam, struct Color ref);
 /* Euclidean cielab diff. ~500 cycles */
-double delta_cie76_diff(struct Color *sam, struct Color *ref);
+double delta_cie76_diff(struct Color sam, struct Color ref);
 /* https://en.wikipedia.org/wiki/Color_difference#CIE94 ~550 cycles */
-double delta_cie94_diff(struct Color *sam, struct Color *ref);
+double delta_cie94_diff(struct Color sam, struct Color ref);
 /* https://en.wikipedia.org/wiki/Color_difference#CIEDE2000 ~1600 cycles */
-double delta_ciede2000_diff(struct Color *sam, struct Color *ref);
+double delta_ciede2000_diff(struct Color sam, struct Color ref);
 #endif
