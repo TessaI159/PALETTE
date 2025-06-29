@@ -1,14 +1,14 @@
-#include <SDL3/SDL_thread.h>
-#include <inttypes.h>
-#include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <string.h>
 
+#include "Color.h"
 #include "FeatureDetection.h"
+#include "Util.h"
 
+#define RUNS 131072
 
-
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
 	srand(0);
 
 	struct system_features_t features;
@@ -19,7 +19,12 @@ int main(int argc, char** argv) {
 	query_logical_cores(&features);
 	query_physical_cores(&features);
 
+	printf("Color is %zu bytes\n", sizeof(struct Color));
+
+	Color col1 = Color_create(rand() * 255, rand() * 255, rand() * 255);
+	Color col2 = Color_create(rand() * 255, rand() * 255, rand() * 255);
+	printf("Euclidean took %llu cycles on average.\n",
+	       time_diff(euclidean_diff, col1, col2, RUNS));
 
 	return 0;
 }
-
