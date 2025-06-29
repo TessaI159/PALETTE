@@ -7,16 +7,16 @@
  * bottosson.github.io/posts/oklab
  */
 
+#include "Color.h"
 #include <math.h>
+#include <stdalign.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdalign.h>
-#include "Color.h"
 
 #define COLOR_SPACE_BIT(space) (1u << (space))
-#define square(num) (num * num)
-#define cube(num) (num * num * num)
+#define square(num) ((num) * (num))
+#define cube(num) ((num) * (num) * (num))
 
 /*
  * Constants for a standard D65/2 illuminant
@@ -24,10 +24,13 @@
  * https://en.wikipedia.org/wiki/CIE_1931_color_space#CIE_standard_observer
  */
 
-const double X2	     = 95.047;
-const double Y2	     = 100.0;
-const double Z2	     = 108.883;
-const double EPSILON = 1e-5;
+static const double X2 = 95.047;
+static const double Y2 = 100.0;
+static const double Z2 = 108.883;
+#ifndef M_PI
+static const double M_PI = 3.14159265358979323846;
+#endif
+/* static const double EPSILON = 1e-5; */
 
 enum ColorSpace {
 	COLOR_OKLAB = 1,
@@ -54,19 +57,19 @@ struct cieLAB {
 };
 
 struct Color {
-	struct okLAB  oklab;
+	struct okLAB oklab;
 	struct cieLAB cielab;
-	struct sRGB   srgb;
-	struct XYZ    xyz;
-	uint32_t      valid_spaces;
+	struct sRGB srgb;
+	struct XYZ xyz;
+	uint32_t valid_spaces;
 } __attribute__((aligned(64)));
 
 uint64_t Color_size() {
 	return sizeof(Color);
 }
 
-Color *Color_create(uint8_t r, uint8_t g, uint8_t b) {
-	Color *rt = malloc(sizeof(Color));
+Color* Color_create(uint8_t r, uint8_t g, uint8_t b) {
+	Color* rt = malloc(sizeof(Color));
 	if (!rt) {
 		perror("Color malloc failed.\n");
 		return NULL;
@@ -79,18 +82,18 @@ Color *Color_create(uint8_t r, uint8_t g, uint8_t b) {
 	return rt;
 }
 
-void Color_destroy(Color *color) {
+void Color_destroy(Color* color) {
 	if (!color)
 		return;
 	free(color);
 }
 
 /* Mark/check the validity of colors */
-static inline void Color_mark_space(Color *color, enum ColorSpace space) {
+static inline void Color_mark_space(Color* color, enum ColorSpace space) {
 	color->valid_spaces |= COLOR_SPACE_BIT(space);
 }
 
-static inline int Color_has_space(Color *color, enum ColorSpace space) {
+static inline int Color_has_space(Color* color, enum ColorSpace space) {
 	return (color->valid_spaces & COLOR_SPACE_BIT(space)) != 0;
 }
 
@@ -150,7 +153,7 @@ static inline double linearize(double channel) {
 
 /* Color conversion functions begin here */
 
-static void convert_srgb_to_xyz(Color *color) {
+static void convert_srgb_to_xyz(Color* color) {
 	/* srgb is always valid, as colors as required to be created with srgb
 	 * values */
 	const struct sRGB srgb = color->srgb;
@@ -186,7 +189,7 @@ static void convert_srgb_to_xyz(Color *color) {
 /* 	Color_mark_space(color, COLOR_SRGB); */
 /* } */
 
-static void convert_xyz_to_cielab(Color *color) {
+static void convert_xyz_to_cielab(Color* color) {
 	const struct XYZ xyz = color->xyz;
 
 	double x = xyz.x / X2;
@@ -231,14 +234,14 @@ static void convert_xyz_to_cielab(Color *color) {
 /* 	Color_mark_space(color, COLOR_XYZ); */
 /* } */
 
-static void convert_xyz_to_oklab(Color *color) {
+static void convert_xyz_to_oklab(Color* color) {
 	const struct XYZ xyz = color->xyz;
-	double		 l   = fma(0.8189330101, xyz.x,
-				   fma(0.3618667424, xyz.y, -0.1288597137 * xyz.z));
-	double		 m   = fma(0.0329845436, xyz.x,
-				   fma(0.9293118715, xyz.y, 0.0361456387 * xyz.z));
-	double		 s   = fma(0.0482003018, xyz.x,
-				   fma(0.2643662691, xyz.y, 0.6338517070 * xyz.z));
+	double l = fma(0.8189330101, xyz.x,
+		       fma(0.3618667424, xyz.y, -0.1288597137 * xyz.z));
+	double m = fma(0.0329845436, xyz.x,
+		       fma(0.9293118715, xyz.y, 0.0361456387 * xyz.z));
+	double s = fma(0.0482003018, xyz.x,
+		       fma(0.2643662691, xyz.y, 0.6338517070 * xyz.z));
 
 	l = cbrt(l);
 	m = cbrt(m);
@@ -429,7 +432,7 @@ static void convert_xyz_to_oklab(Color *color) {
 
 /* I know this is super fragile, but it's not meant to be extensible. Just
    useful */
-static void convert_srgb_to_cielab(Color *color) {
+static void convert_srgb_to_cielab(Color* color) {
 	if (!Color_has_space(color, COLOR_XYZ)) {
 		convert_srgb_to_xyz(color);
 	}
@@ -438,7 +441,7 @@ static void convert_srgb_to_cielab(Color *color) {
 	}
 }
 
-static void convert_srgb_to_oklab(Color *color) {
+static void convert_srgb_to_oklab(Color* color) {
 	if (!Color_has_space(color, COLOR_XYZ)) {
 		convert_srgb_to_xyz(color);
 	}
@@ -449,13 +452,13 @@ static void convert_srgb_to_oklab(Color *color) {
 
 /* Color difference functions begin here */
 
-double euclidean_diff(Color *sam, Color *ref) {
+double euclidean_diff(Color* sam, Color* ref) {
 	return sqrt(square(sam->srgb.r - ref->srgb.r) +
 		    square(sam->srgb.g - ref->srgb.g) +
 		    square(sam->srgb.b - ref->srgb.b));
 }
 
-double redmean_diff(Color *sam, Color *ref) {
+double redmean_diff(Color* sam, Color* ref) {
 	return fabs(
 	    sqrt((2 + ((0.5 * (sam->srgb.r + ref->srgb.r)) / 256.0)) *
 		     square((sam->srgb.r - ref->srgb.r)) +
@@ -464,7 +467,7 @@ double redmean_diff(Color *sam, Color *ref) {
 		     square((sam->srgb.b - ref->srgb.b))));
 }
 
-double delta_ok_diff(Color *sam, Color *ref) {
+double delta_ok_diff(Color* sam, Color* ref) {
 	if (!Color_has_space(sam, COLOR_OKLAB)) {
 		convert_srgb_to_oklab(sam);
 	}
@@ -477,7 +480,7 @@ double delta_ok_diff(Color *sam, Color *ref) {
 		    square(sam->oklab.b - ref->oklab.b));
 }
 
-double delta_cie76_diff(Color *sam, Color *ref) {
+double delta_cie76_diff(Color* sam, Color* ref) {
 	if (!Color_has_space(sam, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(sam);
 	}
@@ -491,7 +494,7 @@ double delta_cie76_diff(Color *sam, Color *ref) {
 		    ref->cielab.b)));
 }
 
-double delta_cie94_diff(Color *sam, Color *ref) {
+double delta_cie94_diff(Color* sam, Color* ref) {
 	if (!Color_has_space(sam, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(sam);
 	}
@@ -524,7 +527,7 @@ double delta_cie94_diff(Color *sam, Color *ref) {
 	return sqrt(fma(term_L, term_L, fma(term_C, term_C, term_H * term_H)));
 }
 
-double delta_ciede2000_diff(Color *sam, Color *ref) {
+double delta_ciede2000_diff(Color* sam, Color* ref) {
 	if (!Color_has_space(sam, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(sam);
 	}
@@ -534,16 +537,16 @@ double delta_ciede2000_diff(Color *sam, Color *ref) {
 	double L1 = sam->cielab.l, a1 = sam->cielab.a, b1 = sam->cielab.b;
 	double L2 = ref->cielab.l, a2 = ref->cielab.a, b2 = ref->cielab.b;
 
-	double C1   = sqrt(fma(a1, a1, b1 * b1));
-	double C2   = sqrt(fma(a2, a2, b2 * b2));
+	double C1 = sqrt(fma(a1, a1, b1 * b1));
+	double C2 = sqrt(fma(a2, a2, b2 * b2));
 	double avgC = 0.5 * (C1 + C2);
 
-	double G   = 0.5 * (1.0 - sqrt(cube(avgC) / (cube(avgC) + cube(25.0))));
+	double G = 0.5 * (1.0 - sqrt(cube(avgC) / (cube(avgC) + cube(25.0))));
 	double a1p = fma(a1, 1.0 + G, 0.0);
 	double a2p = fma(a2, 1.0 + G, 0.0);
 
-	double C1p   = sqrt(fma(a1p, a1p, b1 * b1));
-	double C2p   = sqrt(fma(a2p, a2p, b2 * b2));
+	double C1p = sqrt(fma(a1p, a1p, b1 * b1));
+	double C2p = sqrt(fma(a2p, a2p, b2 * b2));
 	double avgCp = 0.5 * (C1p + C2p);
 
 	double h1p = atan2(b1, a1p);
@@ -592,7 +595,7 @@ double delta_ciede2000_diff(Color *sam, Color *ref) {
 		    Rt * termC * termH);
 }
 
-void Color_calc_spaces(Color *color) {
+void Color_calc_spaces(Color* color) {
 	convert_srgb_to_oklab(color);
 	convert_srgb_to_cielab(color);
 }

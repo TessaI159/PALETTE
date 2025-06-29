@@ -158,7 +158,7 @@ void query_physical_cores(struct system_features_t* features) {
 }
 
 void query_cpu_features(struct system_features_t* features) {
-	features->avx = features->avx2 = features->fma3 = features->neon = 0;
+	features->avx = features->avx2 = features->fma3 = 0;
 #if defined(__x86_64__) || defined(_M_X64)
 	uint32_t eax, ebx, ecx, edx;
 	eax = ebx = ecx = edx = 0;

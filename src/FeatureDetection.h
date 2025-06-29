@@ -7,7 +7,6 @@ struct system_features_t {
 	int	 avx;
 	int	 avx2;
 	int	 fma3;
-	int	 neon;
 	uint64_t l1;
 	uint64_t l2;
 	uint64_t l3;
