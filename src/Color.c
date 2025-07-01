@@ -1,16 +1,14 @@
 /*
- * Thanks to easyrgb.com Björn Ottosson and Wikipedia for the color conversion
- * and difference formulas
+ * Thanks to easyrgb.com, Björn Ottosson, and Wikipedia for the color conversion
+ * and difference formulas.
  * https://www.easyrgb.com/en/math.php
  * en.wikipedia.org/wiki/Color_difference
  * en.wikipedia.org/wiki/Oklab_color_space
  * bottosson.github.io/posts/oklab
  */
 
-#include <stdio.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
-#include <stdalign.h>
 
 #include "Color.h"
 
@@ -28,7 +26,6 @@ static const float Z2 = 108.883;
 #ifndef M_PI
 static const float M_PI = 3.14159265358979323846;
 #endif
-/* static const double EPSILON = 1e-5; */
 
 /* Mark/check the validity of colors */
 static inline void Color_mark_space(struct Color   *color,
@@ -44,6 +41,12 @@ static inline int Color_has_space(const struct Color color,
 static inline float linearize(float channel) {
 	return (channel > 0.04045) ? pow((channel + 0.055) / 1.055, 2.4)
 				   : channel / 12.92;
+}
+
+static inline float delinearize(float channel) {
+	return (channel > 0.0031308f)
+		   ? 1.055f * powf(channel, 1.0f / 2.4f) - 0.055f
+		   : 12.92f * channel;
 }
 
 struct Color Color_create(const char r, const char g, const char b) {
@@ -110,14 +113,24 @@ static void convert_srgb_to_oklab(struct Color *color) {
 	Color_mark_space(color, COLOR_OKLAB);
 }
 
+static inline void convert_srgb_to_grayscale(struct Color *color) {
+	struct sRGB srgb = {linearize(color->srgb.r), linearize(color->srgb.g),
+			    linearize(color->srgb.b)};
+
+	float l = fmaf(0.2126f, srgb.r,
+		       fmaf(0.7152f, srgb.g, fmaf(0.0722f, srgb.b, 0)));
+	
+	color->grayscale.l = l;
+}
+
 /* Color difference functions begin here */
-static float euclidean_diff_fast(const struct sRGB sam, const struct sRGB ref) {
+static inline float euclidean_diff_fast(const struct sRGB sam, const struct sRGB ref) {
 	return sqrt(fmaf(sam.r - ref.r, sam.r - ref.r,
 			 fmaf(sam.g - ref.g, sam.g - ref.g,
 			      fmaf(sam.b - ref.b, sam.b - ref.b, 0))));
 }
 
-static float redmean_diff_fast(const struct sRGB sam, const struct sRGB ref) {
+static inline float redmean_diff_fast(const struct sRGB sam, const struct sRGB ref) {
 	return fabs(sqrt((2 + ((0.5 * (sam.r + ref.r)) / 256.0)) *
 			     (sam.r - ref.r) * (sam.r - ref.r) +
 			 4 * ((sam.g - ref.g) * (sam.g - ref.g)) +
@@ -125,21 +138,21 @@ static float redmean_diff_fast(const struct sRGB sam, const struct sRGB ref) {
 			     (sam.b - ref.b) * (sam.b - ref.b)));
 }
 
-static float delta_ok_diff_fast(const struct okLAB sam,
+static inline float delta_ok_diff_fast(const struct okLAB sam,
 				const struct okLAB ref) {
 	return sqrt((sam.l - ref.l) * (sam.l - ref.l) +
 		    (sam.a - ref.a) * (sam.a - ref.a) +
 		    (sam.b - ref.b) * (sam.b - ref.b));
 }
 
-static float delta_cie76_diff_fast(const struct cieLAB sam,
+static inline float delta_cie76_diff_fast(const struct cieLAB sam,
 				   const struct cieLAB ref) {
 	return sqrt(fmaf(
 	    sam.l - ref.l, sam.l - ref.l,
 	    fmaf(sam.a - ref.a, sam.a - ref.a, sam.b - ref.b * sam.b - ref.b)));
 }
 
-static float delta_cie94_diff_fast(const struct cieLAB sam,
+static inline float delta_cie94_diff_fast(const struct cieLAB sam,
 				   const struct cieLAB ref) {
 	const float K1 = 0.045;
 	const float K2 = 0.015;
@@ -166,7 +179,7 @@ static float delta_cie94_diff_fast(const struct cieLAB sam,
 	    fmaf(term_L, term_L, fmaf(term_C, term_C, term_H * term_H)));
 }
 
-static float delta_ciede2000_diff_fast(const struct cieLAB sam,
+static inline float delta_ciede2000_diff_fast(const struct cieLAB sam,
 				       const struct cieLAB ref) {
 	float L1 = sam.l, a1 = sam.a, b1 = sam.b;
 	float L2 = ref.l, a2 = ref.a, b2 = ref.b;

@@ -7,6 +7,7 @@ enum ColorSpace {
 	COLOR_OKLAB = 1,
 	COLOR_CIELAB,
 	COLOR_SRGB,
+	COLOR_GRAY
 };
 
 /* Supported color spaces */
@@ -14,6 +15,7 @@ struct okLAB {
 	float l, a, b;
 };
 
+/* non-linear */
 struct sRGB {
 	float r, g, b;
 };
@@ -22,11 +24,17 @@ struct cieLAB {
 	float l, a, b;
 };
 
+/* non-linear */
+struct Grayscale {
+	float l;
+};
+
 struct Color {
-	struct okLAB  oklab;
-	struct cieLAB cielab;
-	struct sRGB   srgb;
-	uint8_t	      valid_spaces;
+	struct okLAB	 oklab;
+	struct cieLAB	 cielab;
+	struct sRGB	 srgb;
+	struct Grayscale grayscale;
+	uint8_t		 valid_spaces;
 };
 
 /* Must be constructed with rgb for now */
