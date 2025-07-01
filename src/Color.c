@@ -175,8 +175,8 @@ static float delta_ciede2000_diff_fast(const struct cieLAB sam,
 	float C2   = sqrt(fmaf(a2, a2, b2 * b2));
 	float avgC = 0.5 * (C1 + C2);
 
-	float G =
-	    0.5 * (1.0 - sqrt(pow(avgC, 3) / (pow(avgC, 3) + pow(25.0, 3))));
+	float G	  = 0.5 * (1.0 - sqrt((avgC * avgC * avgC) /
+				      ((avgC * avgC * avgC) + 15625.0f)));
 	float a1p = fmaf(a1, 1.0 + G, 0.0);
 	float a2p = fmaf(a2, 1.0 + G, 0.0);
 
@@ -214,10 +214,12 @@ static float delta_ciede2000_diff_fast(const struct cieLAB sam,
 		  0.20 * cos(4.0 * avgHp - (7.0 * M_PI / 20.0));
 
 	float delta_theta =
-	    (M_PI / 6.0) * exp(-pow((avgHp * 180.0 / M_PI - 275.0) / 25.0, 2));
-	float Rc = 2.0 * sqrt(pow(avgCp, 3) / (pow(avgCp, 3) + pow(25.0, 3)));
-	float Sl = 1.0 + (0.015 * pow(avgLp - 50.0, 2)) /
-			     sqrt(20.0 + pow(avgLp - 50.0, 2));
+	    (M_PI / 6.0) * exp(-(((avgHp * 180.0f / M_PI - 275.0f) / 25.0f) *
+				 ((avgHp * 180.0f / M_PI - 275.0f / 25.0f))));
+	float Rc = 2.0 * sqrt((avgCp * avgCp * avgCp) /
+			      ((avgCp * avgCp * avgCp) + 15625.0));
+	float Sl = 1.0 + (0.015 * ((avgLp - 50.0f) * (avgLp - 50.0f))) /
+			     sqrt(20.0 + ((avgLp - 50.0f) * (avgLp - 50.0f)));
 	float Sc = fmaf(0.045, avgCp, 1.0);
 	float Sh = fmaf(0.015, avgCp * T, 1.0);
 	float Rt = -sin(2.0 * delta_theta) * Rc;
@@ -265,7 +267,7 @@ inline float delta_cie94_diff(struct Color *sam, struct Color *ref) {
 	if (!Color_has_space(*ref, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(ref);
 	}
-	
+
 	return delta_cie94_diff_fast(sam->cielab, ref->cielab);
 }
 

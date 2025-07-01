@@ -24,8 +24,8 @@ include_directories(${CMAKE_SOURCE_DIR})
 if(${APPLE})
 include_directories("/usr/local/include")
 endif()
-find_package(SDL3 REQUIRED)
+# find_package(SDL3 REQUIRED)
 
 add_executable(PALETTE ${SOURCES})
 
-target_link_libraries(PALETTE m SDL3)
+target_link_libraries(PALETTE m)

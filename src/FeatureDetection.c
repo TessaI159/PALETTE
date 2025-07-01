@@ -2,7 +2,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #if defined(_WIN32)
@@ -21,9 +20,146 @@
 #endif
 #endif
 
-void query_cache_sizes(struct system_features_t* features) {
-	features->l1 = features->l2 = features->l3 = 0;
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__linux__) || defined(__unix__) || defined(__poxis__)
+
+static int count_directories(const char *path) {
+	DIR	      *dir;
+	struct dirent *entry;
+	int	       count = 0;
+
+	dir = opendir(path);
+	if (!dir) {
+		perror("Error opening directory.");
+		return -1;
+	}
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (strcmp(entry->d_name, ".") == 0 ||
+		    strcmp(entry->d_name, "..") == 0) {
+			continue;
+		}
+		if (entry->d_type == DT_DIR) {
+			++count;
+		}
+	}
+	closedir(dir);
+	return count;
+}
+
+static int query_file_size(const char *path) {
+	FILE *fp;
+	char  buff[64];
+	fp = fopen(path, "r");
+	if (!fp) {
+		printf("Could not open %s\n", path);
+		return -1;
+	}
+
+	int size = 0;
+	if (fgets(buff, sizeof(buff), fp)) {
+		if (strchr(buff, 'K')) {
+			sscanf(buff, "%dK", &size);
+			size *= 1024;
+		} else if (strchr(buff, 'M')) {
+			sscanf(buff, "%dM", &size);
+			size *= 1024 * 1024;
+		}
+	}
+	fclose(fp);
+	return size;
+}
+
+static int query_file_shared(const char *path) {
+	FILE *fp;
+	char  buff[64];
+	fp = fopen(path, "r");
+	if (!fp) {
+		printf("Could not open %s\n", path);
+		return -1;
+	}
+	int shared;
+	if (fgets(buff, sizeof(buff), fp)) {
+		if (strchr(buff, '-')) {
+			shared = 1;
+		} else {
+			shared = 0;
+		}
+	}
+	fclose(fp);
+	return shared;
+}
+
+static int query_file_type(const char *path) {
+	FILE *fp;
+	char  buff[64];
+	fp = fopen(path, "r");
+	if (!fp) {
+		printf("Could not open %s\n", path);
+		return -1;
+	}
+
+	if (fgets(buff, sizeof(buff), fp)) {
+		if (strstr(buff, "Data") || strstr(buff, "Unified")) {
+			fclose(fp);
+			return 1;
+		}
+	}
+	fclose(fp);
+	return -1;
+}
+
+static int query_file_gen(const char *path) {
+	FILE *fp;
+	char  buff[64];
+	fp = fopen(path, "r");
+	int level;
+	if (!fp) {
+		printf("Could not open %s\n", path);
+		return -1;
+	}
+
+	if (fgets(buff, sizeof(buff), fp)) {
+		sscanf(buff, "%d", &level);
+	}
+	fclose(fp);
+	return level;
+}
+
+#endif
+
+static void query_cache_sizes(struct system_features_t *features) {
+	features->l[0] = features->l[1] = features->l[2] = 0;
+#if defined(__linux__)
+	char *base = "/sys/devices/system/cpu/cpu0/cache/";
+	int   dc   = count_directories(base);
+
+	for (int i = 0; i < dc; ++i) {
+		char path[256];
+		snprintf(path, sizeof(path), "%sindex%d/size", base, i);
+		int size = query_file_size(path);
+		snprintf(path, sizeof(path), "%sindex%d/shared_cpu_list", base,
+			 i);
+		int shared = query_file_shared(path);
+		snprintf(path, sizeof(path), "%sindex%d/type", base, i);
+		int data = query_file_type(path);
+		snprintf(path, sizeof(path), "%sindex%d/level", base, i);
+		int level = query_file_gen(path);
+		snprintf(path, sizeof(path), "%sindex%d/coherency_line_size",
+			 base, i);
+		int line = query_file_gen(path);
+
+		if (size == -1 || shared == -1 || data == -1 || level == -1)
+			continue;
+
+		if (data)
+			features->l[level - 1] = size;
+
+		if (shared && level == 2)
+			features->l2_shared = 1;
+		else
+			features->l2_shared = 0;
+	}
+#elif defined(__x86_64__) || defined(_M_X64)
 	for (int i = 0; i < 10; ++i) {
 		uint32_t eax, ebx, ecx, edx;
 		__cpuid_count(4, i, eax, ebx, ecx, edx);
@@ -32,53 +168,25 @@ void query_cache_sizes(struct system_features_t* features) {
 		if (cache_type == 0)
 			break;
 
-		uint32_t level = (eax >> 5) & 0x7;
-		uint32_t ways = ((ebx >> 22) & 0x3FF) + 1;
+		uint32_t level	    = (eax >> 5) & 0x7;
+		uint32_t ways	    = ((ebx >> 22) & 0x3FF) + 1;
 		uint32_t partitions = ((ebx >> 12) & 0x3FF) + 1;
-		uint32_t line_size = (ebx & 0xFFF) + 1;
-		uint32_t sets = ecx + 1;
+		uint32_t line_size  = (ebx & 0xFFF) + 1;
+		uint32_t sets	    = ecx + 1;
 		uint32_t size_bytes = ways * partitions * line_size * sets;
 
 		if (level == 1)
-			features->l1 += size_bytes;
+			features->l[0] += size_bytes;
 		else if (level == 2)
-			features->l2 += size_bytes;
+			features->l[1] += size_bytes;
 		else if (level == 3)
-			features->l3 += size_bytes;
-	}
-#elif defined(__linux__)
-	FILE* fp;
-	char path[256], buff[32];
-	for (int i = 0; i < 3; ++i) {
-		snprintf(path, sizeof(path),
-			 "/sys/devices/system/cpu/cpu0/cache/index%d/size", i);
-		fp = fopen(path, "r");
-		if (!fp)
-			continue;
-
-		if (fgets(buff, sizeof(buff), fp)) {
-			int size = 0;
-			if (strchr(buff, 'K')) {
-				sscanf(buff, "%dK", &size);
-				size *= 1024;
-			} else if (strchr(buff, 'M')) {
-				sscanf(buff, "%dM", &size);
-				size *= 1024 * 1024;
-			}
-			if (i == 0)
-				features->l1 += size;
-			else if (i == 1)
-				features->l2 += size;
-			else if (i == 2)
-				features->l3 += size;
-		}
-		fclose(fp);
+			features->l[2] += size_bytes;
 	}
 
 #endif
 }
 
-void query_logical_cores(struct system_features_t* features) {
+static void query_logical_cores(struct system_features_t *features) {
 #if defined(_WIN32)
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
@@ -90,15 +198,15 @@ void query_logical_cores(struct system_features_t* features) {
 #endif
 }
 
-void query_physical_cores(struct system_features_t* features) {
+static void query_physical_cores(struct system_features_t *features) {
 #if defined(__linux__)
-	FILE* fp = fopen("/proc/cpuinfo", "r");
+	FILE *fp = fopen("/proc/cpuinfo", "r");
 	if (!fp) {
 		features->physical_cores = sysconf(_SC_NPROCESSORS_ONLN);
 		return;
 	}
-	int physical_ids[256], core_ids[256], cores = 0;
-	int physical_id = -1, core_id = -1;
+	int  physical_ids[256], core_ids[256], cores = 0;
+	int  physical_id = -1, core_id = -1;
 	char line[256];
 	while (fgets(line, sizeof(line), fp)) {
 		if (strncmp(line, "physical id", 11) == 0)
@@ -116,7 +224,7 @@ void query_physical_cores(struct system_features_t* features) {
 				}
 				if (unique && cores < 256) {
 					physical_ids[cores] = physical_id;
-					core_ids[cores] = core_id;
+					core_ids[cores]	    = core_id;
 					++cores;
 				}
 				physical_id = core_id = -1;
@@ -129,8 +237,8 @@ void query_physical_cores(struct system_features_t* features) {
 #elif defined(_WIN32)
 	DWORD len = 0;
 	GetLogicalProcessorInformationEx(RelationProcessorCore, NULL, &len);
-	SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX* buffer =
-	    (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)malloc(len);
+	SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer =
+	    (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)malloc(len);
 	if (!buffer) {
 		features->physical_cores = -1;
 		return;
@@ -141,11 +249,11 @@ void query_physical_cores(struct system_features_t* features) {
 		features->physical_cores = -1;
 		return;
 	}
-	int count = 0;
-	char* ptr = (char*)buffer;
-	while (ptr < (char*)buffer + len) {
-		SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX* item =
-		    (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)ptr;
+	int   count = 0;
+	char *ptr   = (char *)buffer;
+	while (ptr < (char *)buffer + len) {
+		SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *item =
+		    (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)ptr;
 		if (item->Relationship == RelationProcessorCore)
 			++count;
 		ptr += item->Size;
@@ -157,7 +265,7 @@ void query_physical_cores(struct system_features_t* features) {
 #endif
 }
 
-void query_cpu_features(struct system_features_t* features) {
+static void query_cpu_features(struct system_features_t *features) {
 	features->avx = features->avx2 = features->fma3 = 0;
 #if defined(__x86_64__) || defined(_M_X64)
 	uint32_t eax, ebx, ecx, edx;
@@ -182,7 +290,7 @@ void query_cpu_features(struct system_features_t* features) {
 #endif
 	int os_supports_avx = (xcr0_lo & 0x6) == 0x6;
 
-	features->avx = has_avx && os_supports_avx;
+	features->avx  = has_avx && os_supports_avx;
 	features->fma3 = features->avx && has_fma;
 
 	if (features->avx) {
@@ -195,4 +303,12 @@ void query_cpu_features(struct system_features_t* features) {
 		features->avx2 = (ebx & (1 << 5)) != 0;
 	}
 #endif
+}
+
+void query_features(struct system_features_t *features) {
+	memset(features, 0, sizeof(struct system_features_t));
+	query_logical_cores(features);
+	query_physical_cores(features);
+	query_cache_sizes(features);
+	query_cpu_features(features);
 }

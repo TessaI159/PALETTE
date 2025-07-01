@@ -73,7 +73,7 @@ void open_video_file(struct Video *video, const char *file, const char *mode) {
 
 	char command[512];
 	snprintf(command, sizeof(command),
-		 "ffmpeg -i \"%s\" -f rawvideo -pix_fmt rgb24 -", file);
+		 "ffmpeg -v 1 -i \"%s\" -f rawvideo -pix_fmt rgb24 -", file);
 	if (strstr(mode, "w") && strstr(mode, "r")) {
 		printf("Cannot open file for both read and write. Exiting.\n");
 		exit(1);
