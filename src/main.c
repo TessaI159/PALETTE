@@ -2,12 +2,44 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "Color.h"
 #include "FeatureDetection.h"
 #include "Util.h"
 #include "Video.h"
+
+/*
+ * High level overview:
+ * There are four queues, and four threads.
+ * The first contains frames passed in from FFMPEG
+ * The first thread will pull from this queue, and perform pre-processing if
+ * frame_id % fps == 0;
+ *
+ * Pre-processing consists of down-sampling, generating a saliency map, and pick
+ * 5000 or so pixels through a stochastic process using the salience of each
+ * pixels as the weight.
+ *
+ * The first thread then places a stream of 5000 pixels in the second queue.
+ *
+ * The second thread picks up the stream of pixels from the queue, and runs a
+ * kmeans algorithm on it. This way, the kmeans algorithm does not need to take
+ * weights into account. K will be picked via sillhouette scores (?)
+ * It would be very hard to deal with k being inconsistent accross frames
+ *
+ * The second thread outputs k centroids.
+ *
+ * The third thread takes pairs of centroids and interpolates the colors and
+ * percentages over n seconds of video.
+ *
+ * The third thread will then constanly stream interpolation calculated
+ * centroids to the fourth queue.
+ *
+ * The fourth queue will pick up a centroid, create a rectangular buffer of
+ * pixels matching the color and weights of each centroid, and write it over top
+ * a corner of the original video.
+ *
+ * These frames are then passed to FFMPEG to write to a new video file.
+ */
 
 #define RUNS 131072
 

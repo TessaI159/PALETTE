@@ -3,12 +3,7 @@
 
 #include <stdint.h>
 
-enum ColorSpace {
-	COLOR_OKLAB = 1,
-	COLOR_CIELAB,
-	COLOR_SRGB,
-	COLOR_GRAY
-};
+enum ColorSpace { COLOR_OKLAB = 1, COLOR_CIELAB, COLOR_SRGB, COLOR_GRAY };
 
 /* Supported color spaces */
 struct okLAB {
@@ -19,6 +14,7 @@ struct okLAB {
 struct sRGB {
 	float r, g, b;
 };
+
 
 struct cieLAB {
 	float l, a, b;
@@ -34,6 +30,7 @@ struct Color {
 	struct cieLAB	 cielab;
 	struct sRGB	 srgb;
 	struct Grayscale grayscale;
+	struct sRGB	 lsrgb;
 	uint8_t		 valid_spaces;
 };
 
