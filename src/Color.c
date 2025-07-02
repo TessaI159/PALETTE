@@ -1,11 +1,4 @@
-/*
- * Thanks to easyrgb.com, Björn Ottosson, and Wikipedia for the color conversion
- * and difference formulas.
- * https://www.easyrgb.com/en/math.php
- * en.wikipedia.org/wiki/Color_difference
- * en.wikipedia.org/wiki/Oklab_color_space
- * bottosson.github.io/posts/oklab
- */
+
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -14,12 +7,7 @@
 
 #define COLOR_SPACE_BIT(space) (1u << (space))
 
-/*
- * Constants for a standard D65/2 illuminant
- * https://en.wikipedia.org/wiki/Standard_illuminant#Illuminant_series_D
- * https://en.wikipedia.org/wiki/CIE_1931_color_space#CIE_standard_observer
- */
-
+/* Constants for a standard D65/2 illuminant */
 static const float X2 = 95.047;
 static const float Y2 = 100.0;
 static const float Z2 = 108.883;

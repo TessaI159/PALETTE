@@ -20,6 +20,9 @@
 #endif
 #endif
 
+/* TODO (Tess): In the Linux cache detection, check for errors for each of the
+   mini query functions*/
+
 #if defined(__linux__) || defined(__unix__) || defined(__poxis__)
 
 static int count_directories(const char *path) {
@@ -77,7 +80,7 @@ static int query_file_shared(const char *path) {
 		printf("Could not open %s\n", path);
 		return -1;
 	}
-	int shared;
+	int shared = -1;
 	if (fgets(buff, sizeof(buff), fp)) {
 		if (strchr(buff, '-')) {
 			shared = 1;
@@ -158,6 +161,7 @@ static void query_cache_sizes(struct system_features_t *features) {
 			features->l2_shared = 1;
 		else
 			features->l2_shared = 0;
+		features->line_size = line;
 	}
 #elif defined(__x86_64__) || defined(_M_X64)
 	for (int i = 0; i < 10; ++i) {

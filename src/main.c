@@ -11,25 +11,31 @@
 /*
  * High level overview:
  * There are four queues, and four threads.
- * The first contains frames passed in from FFMPEG
- * The first thread will pull from this queue, and perform pre-processing if
- * frame_id % fps == 0;
+ * The first queue contains frames passed in from FFMPEG
+ * FFMPEG will be picky about what frames it queues if:
+ * The frame is a key frame
+ * It has been >=1 second (in video time) since the last frame
+ * The first thread will pull from this queue, and perform pre-processing
  *
  * Pre-processing consists of down-sampling, generating a saliency map, and pick
  * 5000 or so pixels through a stochastic process using the salience of each
  * pixels as the weight.
  *
- * The first thread then places a stream of 5000 pixels in the second queue.
+ * The first thread then queues those pixels
  *
+ * I might need to time this one and give it a second worker if it's too slow
+ * compared to the other threads. I could see it easily bottlenecking.
  * The second thread picks up the stream of pixels from the queue, and runs a
  * kmeans algorithm on it. This way, the kmeans algorithm does not need to take
  * weights into account. K will be picked via sillhouette scores (?)
  * It would be very hard to deal with k being inconsistent accross frames
+ * Although, we could just interpolate sizes from 0 -> size or size -> 0,
+ * but how would the color be interpolated?
  *
- * The second thread outputs k centroids.
+ * The second thread queues k centroids.
  *
  * The third thread takes pairs of centroids and interpolates the colors and
- * percentages over n seconds of video.
+ * percentages over n seconds of video, where n is frame2.pts - frame1.pts
  *
  * The third thread will then constanly stream interpolation calculated
  * centroids to the fourth queue.
@@ -111,11 +117,7 @@ int main(int argc, char **argv) {
 	       "must be shrunk to ~%dx%d\n",
 	       cache, pixels, width, height);
 
-	/* struct Video in_video; */
-	/* open_video_file(&in_video, "vid.webp", "r"); */
-	/* while (get_next_frame(&in_video)) { */
-	/* 	continue; */
-	/* } */
-	/* close_video_file(&in_video); */
+	struct Video in_video;
+	open_video_file(&in_video, "vid.webm");
 	return 0;
 }
