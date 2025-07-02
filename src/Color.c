@@ -27,7 +27,7 @@ static inline int Color_has_space(const struct Color color,
 }
 
 static inline float linearize(float channel) {
-	return (channel > 0.04045) ? pow((channel + 0.055) / 1.055, 2.4)
+	return (channel > 0.04045) ? powf((channel + 0.055) / 1.055, 2.4)
 				   : channel / 12.92;
 }
 
@@ -37,11 +37,11 @@ static inline float delinearize(float channel) {
 		   : 12.92f * channel;
 }
 
-struct Color Color_create(const char r, const char g, const char b) {
+struct Color Color_create(const uint8_t r, const uint8_t g, const uint8_t b) {
 	struct Color color;
-	color.srgb.r = r;
-	color.srgb.g = g;
-	color.srgb.b = b;
+	color.srgb.r = (float)r;
+	color.srgb.g = (float)g;
+	color.srgb.b = (float)b;
 	Color_mark_space(&color, COLOR_SRGB);
 	return color;
 }
@@ -120,14 +120,14 @@ static inline void convert_srgb_to_lsrgb(struct Color *color) {
 /* Color difference functions begin here */
 static inline float euclidean_diff_fast(const struct sRGB sam,
 					const struct sRGB ref) {
-	return sqrt(fmaf(sam.r - ref.r, sam.r - ref.r,
+	return sqrtf(fmaf(sam.r - ref.r, sam.r - ref.r,
 			 fmaf(sam.g - ref.g, sam.g - ref.g,
 			      fmaf(sam.b - ref.b, sam.b - ref.b, 0))));
 }
 
 static inline float redmean_diff_fast(const struct sRGB sam,
 				      const struct sRGB ref) {
-	return fabs(sqrt((2 + ((0.5 * (sam.r + ref.r)) / 256.0)) *
+	return fabs(sqrtf((2 + ((0.5 * (sam.r + ref.r)) / 256.0)) *
 			     (sam.r - ref.r) * (sam.r - ref.r) +
 			 4 * ((sam.g - ref.g) * (sam.g - ref.g)) +
 			 (2 + ((255.0 - (0.5 * (sam.r + ref.r))) / 256.0)) *
@@ -136,16 +136,16 @@ static inline float redmean_diff_fast(const struct sRGB sam,
 
 static inline float delta_ok_diff_fast(const struct okLAB sam,
 				       const struct okLAB ref) {
-	return sqrt((sam.l - ref.l) * (sam.l - ref.l) +
+	return sqrtf((sam.l - ref.l) * (sam.l - ref.l) +
 		    (sam.a - ref.a) * (sam.a - ref.a) +
 		    (sam.b - ref.b) * (sam.b - ref.b));
 }
 
 static inline float delta_cie76_diff_fast(const struct cieLAB sam,
 					  const struct cieLAB ref) {
-	return sqrt(fmaf(
-	    sam.l - ref.l, sam.l - ref.l,
-	    fmaf(sam.a - ref.a, sam.a - ref.a, sam.b - ref.b * sam.b - ref.b)));
+	return sqrtf(fmaf(sam.l - ref.l, sam.l - ref.l,
+			 fmaf(sam.a - ref.a, sam.a - ref.a,
+			      fmaf(sam.b - ref.b, sam.b - ref.b, 0))));
 }
 
 static inline float delta_cie94_diff_fast(const struct cieLAB sam,
@@ -157,8 +157,8 @@ static inline float delta_cie94_diff_fast(const struct cieLAB sam,
 	const float da = sam.a - ref.a;
 	const float db = sam.b - ref.b;
 
-	const float C1 = sqrt(fmaf(sam.a, sam.a, sam.b * sam.b));
-	const float C2 = sqrt(fmaf(ref.a, ref.a, ref.b * ref.b));
+	const float C1 = sqrtf(fmaf(sam.a, sam.a, sam.b * sam.b));
+	const float C2 = sqrtf(fmaf(ref.a, ref.a, ref.b * ref.b));
 	const float dC = C1 - C2;
 
 	const float dH2 = fmaf(da, da, db * db) - dC * dC;
@@ -169,9 +169,9 @@ static inline float delta_cie94_diff_fast(const struct cieLAB sam,
 
 	const float term_L = dl / sl;
 	const float term_C = dC / sc;
-	const float term_H = sqrt(dH2) / sh;
+	const float term_H = sqrtf(dH2) / sh;
 
-	return sqrt(
+	return sqrtf(
 	    fmaf(term_L, term_L, fmaf(term_C, term_C, term_H * term_H)));
 }
 
@@ -180,21 +180,21 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB sam,
 	float L1 = sam.l, a1 = sam.a, b1 = sam.b;
 	float L2 = ref.l, a2 = ref.a, b2 = ref.b;
 
-	float C1   = sqrt(fmaf(a1, a1, b1 * b1));
-	float C2   = sqrt(fmaf(a2, a2, b2 * b2));
+	float C1   = sqrtf(fmaf(a1, a1, b1 * b1));
+	float C2   = sqrtf(fmaf(a2, a2, b2 * b2));
 	float avgC = 0.5 * (C1 + C2);
 
-	float G	  = 0.5 * (1.0 - sqrt((avgC * avgC * avgC) /
+	float G	  = 0.5 * (1.0 - sqrtf((avgC * avgC * avgC) /
 				      ((avgC * avgC * avgC) + 15625.0f)));
 	float a1p = fmaf(a1, 1.0 + G, 0.0);
 	float a2p = fmaf(a2, 1.0 + G, 0.0);
 
-	float C1p   = sqrt(fmaf(a1p, a1p, b1 * b1));
-	float C2p   = sqrt(fmaf(a2p, a2p, b2 * b2));
+	float C1p   = sqrtf(fmaf(a1p, a1p, b1 * b1));
+	float C2p   = sqrtf(fmaf(a2p, a2p, b2 * b2));
 	float avgCp = 0.5 * (C1p + C2p);
 
-	float h1p = atan2(b1, a1p);
-	float h2p = atan2(b2, a2p);
+	float h1p = atan2f(b1, a1p);
+	float h2p = atan2f(b2, a2p);
 	if (h1p < 0.0)
 		h1p += 2.0 * M_PI;
 	if (h2p < 0.0)
@@ -210,34 +210,34 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB sam,
 		dhp = (h2p <= h1p) ? h2p - h1p + 2.0 * M_PI
 				   : h2p - h1p - 2.0 * M_PI;
 
-	float deltHp = 2.0 * sqrt(C1p * C2p) * sin(dhp / 2.0);
+	float deltHp = 2.0 * sqrtf(C1p * C2p) * sinf(dhp / 2.0);
 
 	float avgLp = 0.5 * (L1 + L2);
 	float avgHp = (fabs(h1p - h2p) > M_PI)
 			  ? fmod((h1p + h2p + 2.0 * M_PI), 2.0 * M_PI) * 0.5
 			  : 0.5 * (h1p + h2p);
 
-	float T = 1.0 - 0.17 * cos(avgHp - M_PI / 6.0) +
-		  0.24 * cos(2.0 * avgHp) +
-		  0.32 * cos(3.0 * avgHp + M_PI / 30.0) -
-		  0.20 * cos(4.0 * avgHp - (7.0 * M_PI / 20.0));
+	float T = 1.0 - 0.17 * cosf(avgHp - M_PI / 6.0) +
+		  0.24 * cosf(2.0 * avgHp) +
+		  0.32 * cosf(3.0 * avgHp + M_PI / 30.0) -
+		  0.20 * cosf(4.0 * avgHp - (7.0 * M_PI / 20.0));
 
 	float delta_theta =
 	    (M_PI / 6.0) * exp(-(((avgHp * 180.0f / M_PI - 275.0f) / 25.0f) *
 				 ((avgHp * 180.0f / M_PI - 275.0f / 25.0f))));
-	float Rc = 2.0 * sqrt((avgCp * avgCp * avgCp) /
+	float Rc = 2.0 * sqrtf((avgCp * avgCp * avgCp) /
 			      ((avgCp * avgCp * avgCp) + 15625.0));
 	float Sl = 1.0 + (0.015 * ((avgLp - 50.0f) * (avgLp - 50.0f))) /
-			     sqrt(20.0 + ((avgLp - 50.0f) * (avgLp - 50.0f)));
+			     sqrtf(20.0 + ((avgLp - 50.0f) * (avgLp - 50.0f)));
 	float Sc = fmaf(0.045, avgCp, 1.0);
 	float Sh = fmaf(0.015, avgCp * T, 1.0);
-	float Rt = -sin(2.0 * delta_theta) * Rc;
+	float Rt = -sinf(2.0 * delta_theta) * Rc;
 
 	float termL = deltLp / Sl;
 	float termC = deltCp / Sc;
 	float termH = deltHp / Sh;
 
-	return sqrt(fmaf(termL, termL, fmaf(termC, termC, termH * termH)) +
+	return sqrtf(fmaf(termL, termL, fmaf(termC, termC, termH * termH)) +
 		    Rt * termC * termH);
 }
 

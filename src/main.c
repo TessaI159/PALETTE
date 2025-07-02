@@ -8,43 +8,55 @@
 #include "Util.h"
 #include "Video.h"
 
+/* TODO (Tess): Consider throwing GPU compute capabilities in here somewhere */
+
 /*
  * High level overview:
- * There are four queues, and four threads.
+ * There are three queues, and four threads.
  * The first queue contains frames passed in from FFMPEG
  * FFMPEG will be picky about what frames it queues if:
  * The frame is a key frame
  * It has been >=1 second (in video time) since the last frame
  * The first thread will pull from this queue, and perform pre-processing
  *
- * Pre-processing consists of down-sampling, generating a saliency map, and pick
- * 5000 or so pixels through a stochastic process using the salience of each
- * pixels as the weight.
+ * Pre-processing consists of down-sampling, generating a saliency map, and
+ * picking 5000 or so pixels through a stochastic process using the salience of
+ * each pixel as the weight.
  *
- * The first thread then queues those pixels
+ * The first thread then queues those 5000 pixels
  *
- * I might need to time this one and give it a second worker if it's too slow
- * compared to the other threads. I could see it easily bottlenecking.
- * The second thread picks up the stream of pixels from the queue, and runs a
- * kmeans algorithm on it. This way, the kmeans algorithm does not need to take
- * weights into account. K will be picked via sillhouette scores (?)
- * It would be very hard to deal with k being inconsistent accross frames
- * Although, we could just interpolate sizes from 0 -> size or size -> 0,
- * but how would the color be interpolated?
+ * The second and third threads pick up the stream of pixels from the queue, and
+ * run kmeans algorithm on them. This way, the kmeans algorithm does not need
+ * to take weights into account.
  *
- * The second thread queues k centroids.
+ * TODO (Tess): K might be picked via sillhouette scores (?) It would be very
+ * hard to deal with k being inconsistent accross frames. Although, I could just
+ * interpolate sizes from 0 -> size or size -> 0, but how would the color be
+ * interpolated?
+ *
+ * The second and third threads queue centroids
+ * TODO (Tess): How will order be taken care of here? Will threads 2 and 3 just
+ * throw things into the queue willy-nilly and force the third thread to search
+ * the queue until it finds the right partner frame? Or will we hang thread 2/3
+ * until the latest centroid has the latest id?
  *
  * The third thread takes pairs of centroids and interpolates the colors and
- * percentages over n seconds of video, where n is frame2.pts - frame1.pts
+ * percentages over n seconds of video, where n is frame_n.pts - frame_n-1.pts
  *
  * The third thread will then constanly stream interpolation calculated
- * centroids to the fourth queue.
+ * centroids to disk. For instance, if we have CFR of 24, then for each pair of
+ * centroids, the third thread will create 22 and output 24 centroids.
  *
- * The fourth queue will pick up a centroid, create a rectangular buffer of
- * pixels matching the color and weights of each centroid, and write it over top
- * a corner of the original video.
+ * Close the video stream.
  *
- * These frames are then passed to FFMPEG to write to a new video file.
+ * After this process is complete, we will open the video again, but this time
+ * for a very quick pass. We will decode frame -> add dominant colors to video
+ * -> encode frame -> write to disk -> Delete intermediary file.
+ *
+ *
+ * Goal: process 60 frames per second, minimum. ie if the video is 3600 frames
+ * long, the whole process should take about 1 minute, INCLUDING WRITING THE NEW
+ * VIDEO TO DISK.
  */
 
 #define RUNS 131072
