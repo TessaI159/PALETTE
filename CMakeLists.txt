@@ -15,11 +15,14 @@ add_compile_options(
   -Wno-error=unused-parameter
 )
 
+add_subdirectory(test)
+
 # Automatically check for new source files
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.c)
 
 
 find_package(PkgConfig REQUIRED)
+find_package(OpenMP REQUIRED)
 pkg_check_modules(AVFORMAT REQUIRED libavformat)
 pkg_check_modules(AVCODEC REQUIRED libavcodec)
 pkg_check_modules(AVUTIL REQUIRED libavutil)
@@ -41,7 +44,6 @@ link_directories(
   ${AVUTIL_LIBRARY_DIRS}
   ${SWSCALE_LIBRARY_DIRS}
 )
-
 
 add_executable(PALETTE ${SOURCES})
 

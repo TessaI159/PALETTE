@@ -59,18 +59,18 @@
  * VIDEO TO DISK.
  */
 
-#define RUNS 131072
+#define RUNS 4194304
 
 static inline int width_from_pixels(int pixels) {
-	return (int)(sqrt(pixels) * 4.0f / 3.0f);
+	return round(sqrt(pixels) * 4.0f / 3.0f);
 }
 
 static inline int height_from_width(int width) {
-	return (int)(width * 9.0f / 16.0f);
+	return round(9.0f / 16.0f * width);
 }
 
 int main(int argc, char **argv) {
-	srand(0);
+	/* srand(0); */
 
 	struct system_features_t features;
 	query_features(&features);
@@ -78,6 +78,7 @@ int main(int argc, char **argv) {
 
 	Color col1 = Color_create(rand() * 255, rand() * 255, rand() * 255);
 	Color col2 = Color_create(rand() * 255, rand() * 255, rand() * 255);
+
 	Color_calc_spaces(&col1);
 	Color_calc_spaces(&col2);
 	printf("Euclidean took %lu cycles on average.\n",
@@ -96,7 +97,7 @@ int main(int argc, char **argv) {
 	printf("%" PRIu64 " bytes of l2 cache\n", features.l[1]);
 	printf("%" PRIu64 " bytes of l3 cache\n", features.l[2]);
 
-	uint64_t cache	= features.l[0];
+	uint64_t cache	= features.l[1];
 	uint64_t pixels = cache / 3;
 	int	 width	= width_from_pixels(pixels);
 	int	 height = height_from_width(width);
@@ -106,8 +107,8 @@ int main(int argc, char **argv) {
 	       "to ~%dx%d\n",
 	       cache, pixels, width, height);
 
-	cache += features.l2_shared ? features.l[1]
-				    : features.l[1] / features.physical_cores;
+	cache += features.l2_shared ? features.l[2]
+				    : features.l[2] / features.physical_cores;
 	pixels = cache / 3;
 	width  = width_from_pixels(pixels);
 	height = height_from_width(width);
@@ -118,7 +119,7 @@ int main(int argc, char **argv) {
 	       "shrunk to ~%dx%d\n",
 	       cache, pixels, width, height);
 
-	cache += features.l[2] / features.physical_cores;
+	cache += features.l[3] / features.physical_cores;
 	pixels = cache / 3;
 	width  = width_from_pixels(pixels);
 	height = height_from_width(width);
@@ -129,7 +130,8 @@ int main(int argc, char **argv) {
 	       "must be shrunk to ~%dx%d\n",
 	       cache, pixels, width, height);
 
-	struct Video in_video;
-	open_video_file(&in_video, "vid.webm");
+	/* struct Video in_video; */
+	/* open_video_file(&in_video, "vid.webm"); */
+
 	return 0;
 }

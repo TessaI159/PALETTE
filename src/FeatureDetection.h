@@ -7,7 +7,7 @@ struct system_features_t {
 	int	 avx;
 	int	 avx2;
 	int	 fma3;
-	uint64_t l[3];
+	uint64_t l[4];
 	uint8_t	 logical_cores;
 	uint8_t	 physical_cores;
 	uint16_t line_size;

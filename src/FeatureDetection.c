@@ -21,7 +21,9 @@
 #endif
 
 /* TODO (Tess): In the Linux cache detection, check for errors for each of the
-   mini query functions*/
+   mini query functions */
+
+/* TODO (Tess): Correctly implement cache detection for non-Linux */
 
 #if defined(__linux__) || defined(__unix__) || defined(__poxis__)
 
@@ -155,7 +157,7 @@ static void query_cache_sizes(struct system_features_t *features) {
 			continue;
 
 		if (data)
-			features->l[level - 1] = size;
+			features->l[level] = size;
 
 		if (shared && level == 2)
 			features->l2_shared = 1;
@@ -180,11 +182,11 @@ static void query_cache_sizes(struct system_features_t *features) {
 		uint32_t size_bytes = ways * partitions * line_size * sets;
 
 		if (level == 1)
-			features->l[0] += size_bytes;
-		else if (level == 2)
 			features->l[1] += size_bytes;
-		else if (level == 3)
+		else if (level == 2)
 			features->l[2] += size_bytes;
+		else if (level == 3)
+			features->l[3] += size_bytes;
 	}
 
 #endif

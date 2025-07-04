@@ -10,11 +10,10 @@ struct okLAB {
 	float l, a, b;
 };
 
-/* non-linear */
+/* Stored linear and normalized */
 struct sRGB {
 	float r, g, b;
 };
-
 
 struct cieLAB {
 	float l, a, b;
@@ -30,7 +29,6 @@ struct Color {
 	struct cieLAB	 cielab;
 	struct sRGB	 srgb;
 	struct Grayscale grayscale;
-	struct sRGB	 lsrgb;
 	uint8_t		 valid_spaces;
 };
 
