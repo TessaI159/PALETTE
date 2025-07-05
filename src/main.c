@@ -93,9 +93,9 @@ int main(int argc, char **argv) {
 	       time_diff(delta_cie94_diff, col1, col2, RUNS));
 	printf("Delta ciede2000 took %lu cycles on average.\n",
 	       time_diff(delta_ciede2000_diff, col1, col2, RUNS));
-	printf("%" PRIu64 " bytes of l1 cache\n", features.l[0]);
-	printf("%" PRIu64 " bytes of l2 cache\n", features.l[1]);
-	printf("%" PRIu64 " bytes of l3 cache\n", features.l[2]);
+	printf("%" PRIu64 " bytes of l1 cache\n", features.l[1]);
+	printf("%" PRIu64 " bytes of l2 cache\n", features.l[2]);
+	printf("%" PRIu64 " bytes of l3 cache\n", features.l[3]);
 
 	uint64_t cache	= features.l[1];
 	uint64_t pixels = cache / 3;

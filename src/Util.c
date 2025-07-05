@@ -11,9 +11,7 @@ uint64_t time_diff(float (*func)(Color *, Color *), struct Color col1,
 		func(&col1, &col2);
 	}
 
-	unsigned long long total = 0;
 	unsigned long long tic	 = __rdtsc();
-#pragma omp parallel for reduction(+ : total)
 
 	for (uint64_t i = 0; i < RUNS; ++i) {
 
