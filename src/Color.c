@@ -35,11 +35,20 @@ static inline float delinearize(float channel) {
 		   : 12.92f * channel;
 }
 
-struct Color Color_create(const uint8_t r, const uint8_t g, const uint8_t b) {
+struct Color Color_create(const float r, const float g, const float b) {
 	struct Color color;
-	color.srgb.r = linearize((float)r);
-	color.srgb.g = linearize((float)g);
-	color.srgb.b = linearize((float)b);
+	color.srgb.r = linearize(r / 255.0f);
+	color.srgb.g = linearize(g / 255.0f);
+	color.srgb.b = linearize(b / 255.0f);
+	Color_mark_space(&color, COLOR_SRGB);
+	return color;
+}
+
+struct Color Color_create_norm(const float r, const float g, const float b) {
+	struct Color color;
+	color.srgb.r = linearize(r);
+	color.srgb.g = linearize(g);
+	color.srgb.b = linearize(b);
 	Color_mark_space(&color, COLOR_SRGB);
 	return color;
 }
@@ -50,45 +59,40 @@ static void convert_srgb_to_cielab(struct Color *color) {
 	float r = srgb.r * 100.0f;
 	float g = srgb.g * 100.0f;
 	float b = srgb.b * 100.0f;
+
 	float x =
 	    fmaf(r, 0.4124f, fmaf(g, 0.3576f, fmaf(b, 0.1805f, 0.0f))) / X2;
-	float y =
-	    fmaf(r, 0.2126f, fmaf(g, 0.7152f, fmaf(b, 0.0722f, 0.0f))) / Y2;
+	float y = fmaf(r, 0.2126f, fmaf(g, 0.7152, fmaf(b, 0.0722, 0.0f))) / Y2;
 	float z =
 	    fmaf(r, 0.0193f, fmaf(g, 0.1192f, fmaf(b, 0.9505f, 0.0f))) / Z2;
-	double fx = (x > 0.008856f) ? cbrt(x) : fmaf(7.787f, x, 16.0f / 116.0f);
-	double fy = (y > 0.008856f) ? cbrt(y) : fmaf(7.787f, y, 16.0f / 116.0f);
-	double fz = (z > 0.008856f) ? cbrt(z) : fmaf(7.787f, z, 16.0f / 116.0f);
 
-	struct cieLAB lab;
-	lab.l = (y > 0.008856f) ? fmaf(116.0f, fy, -16.0f) : 903.3f * y;
-	lab.a = fmaf(500.0f, fx - fy, 0.0f);
-	lab.b = fmaf(200.0f, fy - fz, 0.0f);
+	float fx = x > 0.008856 ? cbrtf(x) : fmaf(7.787, x, 16.0f / 116.0f);
+	float fy = y > 0.008856 ? cbrtf(y) : fmaf(7.787, y, 16.0f / 116.0f);
+	float fz = z > 0.008856 ? cbrtf(z) : fmaf(7.787, z, 16.0f / 116.0f);
 
-	color->cielab = lab;
+	color->cielab.l = fmaf(116.0f, fy, -16);
+	color->cielab.a = fmaf(5000.f, fx - fy, 0.0f);
+	color->cielab.b = fmaf(200.0f, fy - fz, 0.0f);
+
 	Color_mark_space(color, COLOR_CIELAB);
 }
 
 static void convert_srgb_to_oklab(struct Color *color) {
 	const struct sRGB srgb = color->srgb;
 
-	float r = srgb.r * 100.0f;
-	float g = srgb.g * 100.0f;
-	float b = srgb.b * 100.0f;
+	float r = srgb.r;
+	float g = srgb.g;
+	float b = srgb.b;
 
-	float x = fmaf(r, 0.4124f, fmaf(g, 0.3576f, fmaf(b, 0.1805f, 0.0f)));
-	float y = fmaf(r, 0.2126f, fmaf(g, 0.7152f, fmaf(b, 0.0722f, 0.0f)));
-	float z = fmaf(r, 0.0193f, fmaf(g, 0.1192f, fmaf(b, 0.9505f, 0.0f)));
 	float l =
-	    fmaf(0.8189330101f, x, fmaf(0.3618667424f, y, -0.1288597137f * z));
+	    cbrtf(fmaf(0.4122214708f, r,
+		       fmaf(0.5363325363f, g, fmaf(0.0514459929f, b, 0.0f))));
 	float m =
-	    fmaf(0.0329845436f, x, fmaf(0.9293118715f, y, 0.0361456387f * z));
+	    cbrtf(fmaf(0.2119034982f, r,
+		       fmaf(0.6806995451f, g, fmaf(0.1073969566f, b, 0.0f))));
 	float s =
-	    fmaf(0.0482003018f, x, fmaf(0.2643662691f, y, 0.6338517070f * z));
-
-	l = cbrt(l);
-	m = cbrt(m);
-	s = cbrt(s);
+	    cbrtf(fmaf(0.0883024619f, r,
+		       fmaf(0.2817188376f, g, fmaf(0.6299787005f, b, 0.0f))));
 
 	struct okLAB lab;
 	lab.l = fmaf(0.2104542553f, l,
@@ -112,22 +116,6 @@ static inline void convert_srgb_to_grayscale(struct Color *color) {
 }
 
 /* Color difference functions begin here */
-static inline float euclidean_diff_fast(const struct sRGB sam,
-					const struct sRGB ref) {
-	return sqrtf(fmaf(sam.r - ref.r, sam.r - ref.r,
-			  fmaf(sam.g - ref.g, sam.g - ref.g,
-			       fmaf(sam.b - ref.b, sam.b - ref.b, 0))));
-}
-
-static inline float redmean_diff_fast(const struct sRGB sam,
-				      const struct sRGB ref) {
-	return fabs(sqrtf((2 + ((0.5f * (sam.r + ref.r)) / 256.0f)) *
-			      (sam.r - ref.r) * (sam.r - ref.r) +
-			  4 * ((sam.g - ref.g) * (sam.g - ref.g)) +
-			  (2 + ((255.0f - (0.5f * (sam.r + ref.r))) / 256.0f)) *
-			      (sam.b - ref.b) * (sam.b - ref.b)));
-}
-
 static inline float delta_ok_diff_fast(const struct okLAB sam,
 				       const struct okLAB ref) {
 	return sqrtf((sam.l - ref.l) * (sam.l - ref.l) +
@@ -216,9 +204,9 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB sam,
 		  0.32f * cosf(3.0f * avgHp + M_PI / 30.0f) -
 		  0.20f * cosf(4.0f * avgHp - (7.0f * M_PI / 20.0f));
 
-	float delta_theta =
-	    (M_PI / 6.0f) * exp(-(((avgHp * 180.0f / M_PI - 275.0f) / 25.0f) *
-				  ((avgHp * 180.0f / M_PI - 275.0f / 25.0f))));
+	float angle	  = (avgHp * 180.0f / M_PI - 275.0f) / 25.0f;
+	float delta_theta = (M_PI / 6.0f) * expf(-(angle * angle));
+
 	float Rc = 2.0f * sqrtf((avgCp * avgCp * avgCp) /
 				((avgCp * avgCp * avgCp) + 15625.0f));
 	float Sl =
@@ -234,14 +222,6 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB sam,
 
 	return sqrtf(fmaf(termL, termL, fmaf(termC, termC, termH * termH)) +
 		     Rt * termC * termH);
-}
-
-float euclidean_diff(struct Color *sam, struct Color *ref) {
-	return euclidean_diff_fast(sam->srgb, ref->srgb);
-}
-
-float redmean_diff(struct Color *sam, struct Color *ref) {
-	return redmean_diff_fast(sam->srgb, ref->srgb);
 }
 
 float delta_ok_diff(struct Color *sam, struct Color *ref) {
