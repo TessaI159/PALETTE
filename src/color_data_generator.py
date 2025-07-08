@@ -1,7 +1,7 @@
 import csv
 import argparse
 import numpy as np
-from colour import sRGB_to_XYZ, XYZ_to_Lab, XYZ_to_Oklab
+from colour import XYZ_to_Oklab
 from colour.difference import (
     delta_E_CIE1976,
     delta_E_CIE1994,
@@ -20,23 +20,52 @@ reference_colors_srgb = [
     (0.478, 0.478, 0.475)
 ]
 
+# D65 white point
+Xn, Yn, Zn = 0.95047, 1.00000, 1.08883
+delta = (6.0 / 29.0) ** 3
+
+# RGB → XYZ matrix for linear RGB
+RGB_TO_XYZ_MATRIX = np.array([
+    [0.4124564, 0.3575761, 0.1804375],
+    [0.2126729, 0.7151522, 0.0721750],
+    [0.0193339, 0.1191920, 0.9503041]
+])
 
 def linearize_srgb(srgb):
-    return np.where(srgb <= 0.04045, srgb / 12.92, ((srgb + 0.055) / 1.055) ** 2.4)
+    return np.where(srgb <= 0.04045,
+                    srgb / 12.92,
+                    ((srgb + 0.055) / 1.055) ** 2.4)
 
+def f(t):
+    return np.where(t > delta,
+                    np.cbrt(t),
+                    7.787 * t + 16.0 / 116.0)
+
+def linear_rgb_to_xyz(rgb_lin):
+    return RGB_TO_XYZ_MATRIX @ rgb_lin
+
+def xyz_to_lab(xyz):
+    x, y, z = xyz[0] / Xn, xyz[1] / Yn, xyz[2] / Zn
+    fx, fy, fz = f(np.array([x, y, z]))
+    L = 116.0 * fy - 16.0
+    a = 500.0 * (fx - fy)
+    b = 200.0 * (fy - fz)
+    return np.array([L, a, b])
 
 def euclidean_diff(c1, c2):
     return np.linalg.norm(c1 - c2)
 
-
 def generate_color_data():
     srgb = np.array(reference_colors_srgb)
     linear_srgb = linearize_srgb(srgb)
-    lab = np.array([XYZ_to_Lab(sRGB_to_XYZ(c)) for c in linear_srgb])
-    oklab = np.array([XYZ_to_Oklab(sRGB_to_XYZ(c)) for c in linear_srgb])
-    grayscale = np.dot(linear_srgb, [0.2126, 0.7152, 0.0722])
-    return srgb, linear_srgb, lab, oklab, grayscale
 
+    xyz = np.array([linear_rgb_to_xyz(c) for c in linear_srgb])
+    lab = np.array([xyz_to_lab(x) for x in xyz])
+    oklab = np.array([XYZ_to_Oklab(x) for x in xyz])
+
+    grayscale = np.dot(linear_srgb, [0.2126, 0.7152, 0.0722])
+
+    return srgb, linear_srgb, lab, oklab, grayscale
 
 def write_reference_csv(path, srgb, linear_srgb, lab, oklab, grayscale):
     fieldnames = [
@@ -60,7 +89,6 @@ def write_reference_csv(path, srgb, linear_srgb, lab, oklab, grayscale):
                 "grayscale": grayscale[i]
             })
 
-
 def write_diff_csv(path, lab, oklab):
     fieldnames = [
         "color1_index", "color2_index",
@@ -80,7 +108,6 @@ def write_diff_csv(path, lab, oklab):
                     "ciede2000_diff": delta_E_CIE2000(lab[i], lab[j]),
                 })
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_prefix", type=str, default="color_output")
@@ -96,7 +123,6 @@ def main():
 
     print(f"[✓] Reference colors written to: {ref_path}")
     print(f"[✓] Pairwise differences written to: {diff_path}")
-
 
 if __name__ == "__main__":
     main()

@@ -5,7 +5,7 @@
 #include "Color.h"
 #include "unity.h"
 
-#define DELTA 1e-3
+#define DELTA 9e-5
 
 #define NUM_REF_COL 22
 #define NUM_FIELDS_DIFF 6
@@ -107,24 +107,18 @@ static bool parse_data_diffs(Diff *diffs, const char *filename) {
 			fields[i++] = token;
 			token	    = strtok(NULL, ",\n");
 		}
-		diffs[atoi(fields[ind])].color1_index =
-		    atoi(fields[COLOR1_INDEX]);
-		diffs[atoi(fields[ind])].color2_index =
-		    atoi(fields[COLOR2_INDEX]);
-		diffs[atoi(fields[ind])].oklab =
-		    strtof(fields[OKLAB_DIFF], NULL);
-		diffs[atoi(fields[ind])].cie76 =
-		    strtof(fields[CIE76_DIFF], NULL);
-		diffs[atoi(fields[ind])].cie94 =
-		    strtof(fields[CIE94_DIFF], NULL);
-		diffs[atoi(fields[ind])].ciede2000 =
-		    strtof(fields[CIEDE2000_DIFF], NULL);
+		diffs[ind].color1_index = atoi(fields[COLOR1_INDEX]);
+		diffs[ind].color2_index = atoi(fields[COLOR2_INDEX]);
+		diffs[ind].oklab	= strtof(fields[OKLAB_DIFF], NULL);
+		diffs[ind].cie76	= strtof(fields[CIE76_DIFF], NULL);
+		diffs[ind].cie94	= strtof(fields[CIE94_DIFF], NULL);
+		diffs[ind].ciede2000	= strtof(fields[CIEDE2000_DIFF], NULL);
+		++ind;
 	}
 	return true;
 }
 
 void test_color_create(void) {
-	Diff		 diffs[NUM_DIFFS];
 	struct Color	 colors[NUM_REF_COL];
 	struct sRGB	 linears[NUM_REF_COL];
 	struct cieLAB	 cielabs[NUM_REF_COL];
@@ -132,9 +126,6 @@ void test_color_create(void) {
 	struct Grayscale grayscales[NUM_REF_COL];
 	if (!parse_data_refs(colors, linears, cielabs, oklabs, grayscales,
 			     "sharma_reference_colors.csv")) {
-		return;
-	}
-	if (!parse_data_diffs(diffs, "sharma_pairwise_differences.csv")) {
 		return;
 	}
 
@@ -149,7 +140,7 @@ void test_color_create(void) {
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
 		    DELTA, linears[i].b, colors[i].srgb.b,
 		    "Linearized srgb b is too far out of bounds");
-		
+
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
 		    DELTA, cielabs[i].l, colors[i].cielab.l,
 		    "cielab l is too far out of bounds");
@@ -159,9 +150,143 @@ void test_color_create(void) {
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
 		    DELTA, cielabs[i].b, colors[i].cielab.b,
 		    "cielab b is too far out of bounds");
-		
+
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    DELTA, oklabs[i].l, colors[i].oklab.l,
+		    "oklab l is too far out of bounds");
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    DELTA, oklabs[i].a, colors[i].oklab.a,
+		    "oklab a is too far out of bounds");
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    DELTA, oklabs[i].b, colors[i].oklab.b,
+		    "oklab b is too far out of bounds");
+
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    DELTA, grayscales[i].l, colors[i].grayscale.l,
+		    "grayscale is too far out of bounds");
+
 	}
 }
 
 void test_cie94_diff(void) {
+	Diff		 diffs[NUM_DIFFS];
+	struct Color	 colors[NUM_REF_COL];
+	struct sRGB	 linears[NUM_REF_COL];
+	struct cieLAB	 cielabs[NUM_REF_COL];
+	struct okLAB	 oklabs[NUM_REF_COL];
+	struct Grayscale grayscales[NUM_REF_COL];
+	if (!parse_data_diffs(diffs, "sharma_pairwise_differences.csv")) {
+		return;
+	}
+	if (!parse_data_refs(colors, linears, cielabs, oklabs, grayscales,
+			     "sharma_reference_colors.csv")) {
+		return;
+	}
+
+	int	  diff_num  = 0;
+	const int ref_const = NUM_REF_COL + NUM_REF_COL - 1;
+	for (int c1 = 0; c1 < NUM_REF_COL; ++c1) {
+		for (int c2 = c1 + 1; c2 < NUM_REF_COL; ++c2) {
+			diff_num = (c1 * (ref_const - c1)) / 2 + (c2 - c1 - 1);
+			Diff cur_diff = diffs[diff_num];
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    DELTA, cur_diff.cie94,
+			    delta_cie94_diff(&colors[cur_diff.color1_index],
+					     &colors[cur_diff.color2_index]),
+			    "cie94 diff is too far off.");
+		}
+	}
+}
+
+
+void test_oklab_diff(void) {
+	Diff		 diffs[NUM_DIFFS];
+	struct Color	 colors[NUM_REF_COL];
+	struct sRGB	 linears[NUM_REF_COL];
+	struct cieLAB	 cielabs[NUM_REF_COL];
+	struct okLAB	 oklabs[NUM_REF_COL];
+	struct Grayscale grayscales[NUM_REF_COL];
+	if (!parse_data_diffs(diffs, "sharma_pairwise_differences.csv")) {
+		return;
+	}
+	if (!parse_data_refs(colors, linears, cielabs, oklabs, grayscales,
+			     "sharma_reference_colors.csv")) {
+		return;
+	}
+
+	int	  diff_num  = 0;
+	const int ref_const = NUM_REF_COL + NUM_REF_COL - 1;
+	for (int c1 = 0; c1 < NUM_REF_COL; ++c1) {
+		for (int c2 = c1 + 1; c2 < NUM_REF_COL; ++c2) {
+			diff_num = (c1 * (ref_const - c1)) / 2 + (c2 - c1 - 1);
+			Diff cur_diff = diffs[diff_num];
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    DELTA, cur_diff.oklab,
+			    delta_ok_diff(&colors[cur_diff.color1_index],
+					     &colors[cur_diff.color2_index]),
+			    "oklab diff is too far off.");
+		}
+	}
+}
+
+
+void test_cie76_diff(void) {
+	Diff		 diffs[NUM_DIFFS];
+	struct Color	 colors[NUM_REF_COL];
+	struct sRGB	 linears[NUM_REF_COL];
+	struct cieLAB	 cielabs[NUM_REF_COL];
+	struct okLAB	 oklabs[NUM_REF_COL];
+	struct Grayscale grayscales[NUM_REF_COL];
+	if (!parse_data_diffs(diffs, "sharma_pairwise_differences.csv")) {
+		return;
+	}
+	if (!parse_data_refs(colors, linears, cielabs, oklabs, grayscales,
+			     "sharma_reference_colors.csv")) {
+		return;
+	}
+
+	int	  diff_num  = 0;
+	const int ref_const = NUM_REF_COL + NUM_REF_COL - 1;
+	for (int c1 = 0; c1 < NUM_REF_COL; ++c1) {
+		for (int c2 = c1 + 1; c2 < NUM_REF_COL; ++c2) {
+			diff_num = (c1 * (ref_const - c1)) / 2 + (c2 - c1 - 1);
+			Diff cur_diff = diffs[diff_num];
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    DELTA, cur_diff.cie76,
+			    delta_cie76_diff(&colors[cur_diff.color1_index],
+					     &colors[cur_diff.color2_index]),
+			    "cie76 diff is too far off.");
+		}
+	}
+}
+
+
+void test_ciede2000_diff(void) {
+	Diff		 diffs[NUM_DIFFS];
+	struct Color	 colors[NUM_REF_COL];
+	struct sRGB	 linears[NUM_REF_COL];
+	struct cieLAB	 cielabs[NUM_REF_COL];
+	struct okLAB	 oklabs[NUM_REF_COL];
+	struct Grayscale grayscales[NUM_REF_COL];
+	if (!parse_data_diffs(diffs, "sharma_pairwise_differences.csv")) {
+		return;
+	}
+	if (!parse_data_refs(colors, linears, cielabs, oklabs, grayscales,
+			     "sharma_reference_colors.csv")) {
+		return;
+	}
+
+	int	  diff_num  = 0;
+	const int ref_const = NUM_REF_COL + NUM_REF_COL - 1;
+	for (int c1 = 0; c1 < NUM_REF_COL; ++c1) {
+		for (int c2 = c1 + 1; c2 < NUM_REF_COL; ++c2) {
+			diff_num = (c1 * (ref_const - c1)) / 2 + (c2 - c1 - 1);
+			Diff cur_diff = diffs[diff_num];
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    DELTA, cur_diff.ciede2000,
+			    delta_ciede2000_diff(&colors[cur_diff.color1_index],
+					     &colors[cur_diff.color2_index]),
+			    "ciede2000 diff is too far off.");
+		}
+	}
 }

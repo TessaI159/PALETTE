@@ -129,13 +129,7 @@ int main(int argc, char **argv) {
 	/* struct Video in_video; */
 	/* open_video_file(&in_video, "vid.webm"); */
 
-	struct Color color = Color_create_norm(0.031, 0.522, .631);
-	Color_calc_spaces(&color);
-	printf("color sRGB: (%f,%f,%f)\t\tcielab: (%f,%f,%f)\t\toklab: "
-	       "(%f,%f,%f)\t\tgrayscale: %f",
-	       color.srgb.r, color.srgb.g, color.srgb.b, color.cielab.l,
-	       color.cielab.a, color.cielab.b, color.oklab.l, color.oklab.a,
-	       color.oklab.b, color.grayscale.l);
+	
 
 	return 0;
 }
