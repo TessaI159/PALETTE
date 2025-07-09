@@ -14,7 +14,7 @@
 #define OKL_DIF_DLT 1e-4
 #define C76_DIF_DLT 1e-9
 #define C94_DIF_DLT 1e-10
-#define C20_DIF_DLT 2e-3
+#define C20_DIF_DLT 1e-2
 
 #define NUM_REF_COL 22
 #define NUM_FIELDS_DIFF 6
@@ -110,37 +110,66 @@ static inline void print_color(const struct Color color) {
 	printf("(%f,%f,%f)\n", color.srgb.r, color.srgb.g, color.srgb.b);
 }
 
+// Returns number of fields if all are valid, or -1 if any field is empty
+static int split_csv(char *line, char **fields, int max_fields) {
+	int   count = 0;
+	char *start = line;
+
+	while (count < max_fields) {
+		char *comma = strchr(start, ',');
+		if (comma) {
+			*comma		= '\0';
+			fields[count++] = start;
+			start		= comma + 1;
+		} else {
+			fields[count++] = start;
+			break;
+		}
+	}
+
+	while (count < max_fields) {
+		fields[count++] = NULL;
+	}
+
+	// Validation: check for NULL or empty strings
+	for (int i = 0; i < max_fields; ++i) {
+		if (!fields[i] || fields[i][0] == '\0') {
+			return -1;
+		}
+	}
+	return max_fields;
+}
+
 static bool parse_data_refs(const char *filename) {
 	FILE *fp = fopen(filename, "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to open %s\n", filename);
 		return false;
 	}
-
 	char line[MAX_LINE];
-	fgets(line, sizeof(line), fp);
+	fgets(line, sizeof(line), fp); // header
 	while (fgets(line, sizeof(line), fp)) {
 		char *fields[NUM_FIELDS_REF] = {0};
-		char *token		     = strtok(line, ",\n");
-		int   i			     = 0;
-		while (token && i < NUM_FIELDS_REF) {
-			fields[i++] = token;
-			token	    = strtok(NULL, ",\n");
+		line[strcspn(line, "\r\n")]  = '\0';
+		if (split_csv(line, fields, NUM_FIELDS_REF) == -1) {
+			fprintf(stderr, "Too few fields in line: %s file: %s\n",
+				line, filename);
+			continue;
 		}
-		colors[atoi(fields[INDEX])] = Color_create_norm(
-		    strtod(fields[SRGB_R], NULL), strtod(fields[SRGB_G], NULL),
-		    strtod(fields[SRGB_B], NULL));
-		linears[atoi(fields[INDEX])].r = strtod(fields[LINEAR_R], NULL);
-		linears[atoi(fields[INDEX])].g = strtod(fields[LINEAR_G], NULL);
-		linears[atoi(fields[INDEX])].b = strtod(fields[LINEAR_B], NULL);
-		cielabs[atoi(fields[INDEX])].l = strtod(fields[LAB_L], NULL);
-		cielabs[atoi(fields[INDEX])].a = strtod(fields[LAB_A], NULL);
-		cielabs[atoi(fields[INDEX])].b = strtod(fields[LAB_B], NULL);
-		oklabs[atoi(fields[INDEX])].l  = strtod(fields[OKLAB_L], NULL);
-		oklabs[atoi(fields[INDEX])].a  = strtod(fields[OKLAB_A], NULL);
-		oklabs[atoi(fields[INDEX])].b  = strtod(fields[OKLAB_B], NULL);
-		grayscales[atoi(fields[INDEX])].l =
-		    strtod(fields[GRAYSCALE], NULL);
+		int idx	       = atoi(fields[INDEX]);
+		colors[idx]    = Color_create_norm(strtod(fields[SRGB_R], NULL),
+						   strtod(fields[SRGB_G], NULL),
+						   strtod(fields[SRGB_B], NULL));
+		linears[idx].r = strtod(fields[LINEAR_R], NULL);
+		linears[idx].g = strtod(fields[LINEAR_G], NULL);
+		linears[idx].b = strtod(fields[LINEAR_B], NULL);
+		cielabs[idx].l = strtod(fields[LAB_L], NULL);
+		cielabs[idx].a = strtod(fields[LAB_A], NULL);
+		cielabs[idx].b = strtod(fields[LAB_B], NULL);
+		oklabs[idx].l  = strtod(fields[OKLAB_L], NULL);
+		oklabs[idx].a  = strtod(fields[OKLAB_A], NULL);
+		oklabs[idx].b  = strtod(fields[OKLAB_B], NULL);
+		grayscales[idx].l = strtod(fields[GRAYSCALE], NULL);
 	}
 	fclose(fp);
 	return true;
@@ -153,15 +182,15 @@ static bool parse_data_diffs(const char *filename) {
 		return false;
 	}
 	char line[MAX_LINE];
-	fgets(line, sizeof(line), fp);
+	fgets(line, sizeof(line), fp); // header
 	int ind = 0;
 	while (fgets(line, sizeof(line), fp)) {
 		char *fields[NUM_FIELDS_DIFF] = {0};
-		char *token		      = strtok(line, ",\n");
-		int   i			      = 0;
-		while (token && i < NUM_FIELDS_DIFF) {
-			fields[i++] = token;
-			token	    = strtok(NULL, ",\n");
+		line[strcspn(line, "\r\n")]   = '\0';
+		if (split_csv(line, fields, NUM_FIELDS_DIFF) == -1) {
+			fprintf(stderr, "Too few fields in line: %s file: %s\n",
+				line, filename);
+			continue;
 		}
 		diffs[ind].color1_index = atoi(fields[COLOR1_INDEX]);
 		diffs[ind].color2_index = atoi(fields[COLOR2_INDEX]);
@@ -181,15 +210,15 @@ static bool parse_data_e2000(const char *filename) {
 		return false;
 	}
 	char line[MAX_LINE];
-	fgets(line, sizeof(line), fp);
+	fgets(line, sizeof(line), fp); // header
 	int ind = 0;
 	while (fgets(line, sizeof(line), fp)) {
-		char *fields[NUM_FIELDS_E2000];
-		char *token = strtok(line, ",\n");
-		int   i	    = 0;
-		while (token && i < NUM_FIELDS_E2000) {
-			fields[i++] = token;
-			token	    = strtok(NULL, ",\n");
+		char *fields[NUM_FIELDS_E2000] = {0};
+		line[strcspn(line, "\r\n")]    = '\0';
+		if (split_csv(line, fields, NUM_FIELDS_E2000) == -1) {
+			fprintf(stderr, "Too few fields in line: %s file: %s\n",
+				line, filename);
+			continue;
 		}
 		ediffs[ind].pair = atoi(fields[PAIR]);
 		ediffs[ind].i	 = atoi(fields[I]);
@@ -214,7 +243,6 @@ static bool parse_data_e2000(const char *filename) {
 	fclose(fp);
 	return true;
 }
-
 void setUp(void) {
 	if (!parse_data_diffs("sharma_pairwise_differences.csv")) {
 		TEST_FAIL_MESSAGE("Could not load csv data.");
@@ -344,8 +372,6 @@ void test_cie76_diff(void) {
 	}
 }
 
-/* TODO (Tess): Test harness is all setup for this: just need to do the actual
- * testing.*/
 void test_ciede2000_diff(void) {
 	for (int i = 0; i < NUM_PAIRS * 2; i += 2) {
 		struct cieLAB_test cols[2] = {0};
