@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
 	printf("%" PRIu64 " bytes of l3 cache\n", features.l[3]);
 
 	uint64_t cache	= features.l[1];
-	uint64_t pixels = cache / 3;
+	uint64_t pixels = cache / sizeof(Color);
 	int	 width	= width_from_pixels(pixels);
 	int	 height = height_from_width(width);
 	printf("%" PRIu64 " bytes of l1 cache can hold ~%" PRIu64
@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
 
 	cache += features.l2_shared ? features.l[2]
 				    : features.l[2] / features.physical_cores;
-	pixels = cache / 3;
+	pixels = cache / sizeof(Color);
 	width  = width_from_pixels(pixels);
 	height = height_from_width(width);
 
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
 	       cache, pixels, width, height);
 
 	cache += features.l[3] / features.physical_cores;
-	pixels = cache / 3;
+	pixels = cache / sizeof(Color);
 	width  = width_from_pixels(pixels);
 	height = height_from_width(width);
 
