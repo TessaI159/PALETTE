@@ -17,8 +17,8 @@ int main(void) {
 	RUN_TEST(test_queue_push);
 	RUN_TEST(test_queue_pop);
 	RUN_TEST(test_queue_counters);
-	RUN_TEST(test_color_create);
 	RUN_TEST(test_color_check_flags);
+	RUN_TEST(test_color_create);
 	RUN_TEST(test_cie76_diff);
 	RUN_TEST(test_cie94_diff);
 	RUN_TEST(test_ciede2000_diff);

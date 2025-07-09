@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#define DEBUG
-
 enum ColorSpace { COLOR_SRGB, COLOR_OKLAB, COLOR_CIELAB, COLOR_GRAY };
 
 /* Supported color spaces */
@@ -25,6 +23,18 @@ struct Grayscale {
 	double l;
 };
 
+#ifdef PALETTE_DEBUG
+struct cieLAB_test {
+  double l, a, b;
+  double ap, cp, hp;
+  double avghp;
+  double g, t;
+  double sl, sc, sh;
+  double rt;
+  double e2000;
+};
+#endif
+
 struct Color {
 	struct okLAB	 oklab;
 	struct cieLAB	 cielab;
@@ -41,9 +51,9 @@ struct Color Color_create_norm(const double r, const double g, const double b);
 /* Calculates all spaces. Used for testing */
 void Color_calc_spaces(struct Color *color);
 
-#ifdef DEBUG
-double delta_ciede2000_diff_fast(const struct cieLAB sam,
-				 const struct cieLAB ref);
+#ifdef PALETTE_DEBUG
+double delta_ciede2000_diff_fast(struct cieLAB_test *sam,
+				 struct cieLAB_test *ref);
 void convert_srgb_to_grayscale(struct Color *color);
 #endif
 

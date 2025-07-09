@@ -7,7 +7,14 @@
 #include "Color.h"
 #include "unity.h"
 
-#define DELTA 9e-5
+#define LIN_CRE_DLT 1e-10
+#define LAB_CRE_DLT 1e-10
+#define OKL_CRE_DLT 1e-4
+#define GRY_CRE_DLT 1e-10
+#define OKL_DIF_DLT 1e-4
+#define C76_DIF_DLT 1e-9
+#define C94_DIF_DLT 1e-10
+#define C20_DIF_DLT 2e-3
 
 #define NUM_REF_COL 22
 #define NUM_FIELDS_DIFF 6
@@ -92,7 +99,7 @@ enum e2000_csv_indices {
 };
 
 Diff		 diffs[NUM_DIFFS];
-Diff_e2000	 ediffs[NUM_PAIRS];
+Diff_e2000	 ediffs[NUM_PAIRS * 2];
 struct Color	 colors[NUM_REF_COL];
 struct sRGB	 linears[NUM_REF_COL];
 struct cieLAB	 cielabs[NUM_REF_COL];
@@ -103,10 +110,7 @@ static inline void print_color(const struct Color color) {
 	printf("(%f,%f,%f)\n", color.srgb.r, color.srgb.g, color.srgb.b);
 }
 
-static bool parse_data_refs(struct Color *colors, struct sRGB *linears,
-			    struct cieLAB *cielabs, struct okLAB *oklabs,
-			    struct Grayscale *grayscales,
-			    const char	     *filename) {
+static bool parse_data_refs(const char *filename) {
 	FILE *fp = fopen(filename, "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to open %s\n", filename);
@@ -142,7 +146,7 @@ static bool parse_data_refs(struct Color *colors, struct sRGB *linears,
 	return true;
 }
 
-static bool parse_data_diffs(Diff *diffs, const char *filename) {
+static bool parse_data_diffs(const char *filename) {
 	FILE *fp = fopen(filename, "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to open %s\n", filename);
@@ -170,7 +174,7 @@ static bool parse_data_diffs(Diff *diffs, const char *filename) {
 	return true;
 }
 
-static bool parse_data_e2000(Diff_e2000 *diffs, const char *filename) {
+static bool parse_data_e2000(const char *filename) {
 	FILE *fp = fopen(filename, "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to open %s\n", filename);
@@ -195,7 +199,8 @@ static bool parse_data_e2000(Diff_e2000 *diffs, const char *filename) {
 		ediffs[ind].ap	 = strtod(fields[AP], NULL);
 		ediffs[ind].cp	 = strtod(fields[CP], NULL);
 		ediffs[ind].hp	 = strtod(fields[HP], NULL);
-		if (ediffs[ind].i >> 1 == 1) {
+		if (ediffs[ind].i == 1) {
+			ediffs[ind].avghp = strtod(fields[AVGHP], NULL);
 			ediffs[ind].g	  = strtod(fields[G], NULL);
 			ediffs[ind].t	  = strtod(fields[T], NULL);
 			ediffs[ind].sl	  = strtod(fields[SL], NULL);
@@ -204,20 +209,20 @@ static bool parse_data_e2000(Diff_e2000 *diffs, const char *filename) {
 			ediffs[ind].rt	  = strtod(fields[RT], NULL);
 			ediffs[ind].e2000 = strtod(fields[E2000], NULL);
 		}
+		++ind;
 	}
 	fclose(fp);
 	return true;
 }
 
 void setUp(void) {
-	if (!parse_data_diffs(diffs, "sharma_pairwise_differences.csv")) {
+	if (!parse_data_diffs("sharma_pairwise_differences.csv")) {
 		TEST_FAIL_MESSAGE("Could not load csv data.");
 	}
-	if (!parse_data_refs(colors, linears, cielabs, oklabs, grayscales,
-			     "sharma_reference_colors.csv")) {
+	if (!parse_data_refs("sharma_reference_colors.csv")) {
 		TEST_FAIL_MESSAGE("Could not load csv data.");
 	}
-	if (!parse_data_e2000(ediffs, "sharma_e2000.csv")) {
+	if (!parse_data_e2000("sharma_e2000.csv")) {
 		TEST_FAIL_MESSAGE("Could not load csv data.");
 	}
 }
@@ -229,37 +234,37 @@ void test_color_create(void) {
 	for (int i = 0; i < NUM_REF_COL; ++i) {
 		Color_calc_spaces(&colors[i]);
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    DELTA, linears[i].r, colors[i].srgb.r,
+		    LIN_CRE_DLT, linears[i].r, colors[i].srgb.r,
 		    "Linearized srgb r is too far out of bounds");
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    DELTA, linears[i].g, colors[i].srgb.g,
+		    LIN_CRE_DLT, linears[i].g, colors[i].srgb.g,
 		    "Linearized srgb g is too far out of bounds");
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    DELTA, linears[i].b, colors[i].srgb.b,
+		    LIN_CRE_DLT, linears[i].b, colors[i].srgb.b,
 		    "Linearized srgb b is too far out of bounds");
 
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    DELTA, cielabs[i].l, colors[i].cielab.l,
+		    LAB_CRE_DLT, cielabs[i].l, colors[i].cielab.l,
 		    "cielab l is too far out of bounds");
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    DELTA, cielabs[i].a, colors[i].cielab.a,
+		    LAB_CRE_DLT, cielabs[i].a, colors[i].cielab.a,
 		    "cielab a is too far out of bounds");
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    DELTA, cielabs[i].b, colors[i].cielab.b,
+		    LAB_CRE_DLT, cielabs[i].b, colors[i].cielab.b,
 		    "cielab b is too far out of bounds");
 
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    DELTA, oklabs[i].l, colors[i].oklab.l,
+		    OKL_CRE_DLT, oklabs[i].l, colors[i].oklab.l,
 		    "oklab l is too far out of bounds");
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    DELTA, oklabs[i].a, colors[i].oklab.a,
+		    OKL_CRE_DLT, oklabs[i].a, colors[i].oklab.a,
 		    "oklab a is too far out of bounds");
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    DELTA, oklabs[i].b, colors[i].oklab.b,
+		    OKL_CRE_DLT, oklabs[i].b, colors[i].oklab.b,
 		    "oklab b is too far out of bounds");
 
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    DELTA, grayscales[i].l, colors[i].grayscale.l,
+		    GRY_CRE_DLT, grayscales[i].l, colors[i].grayscale.l,
 		    "grayscale is too far out of bounds");
 	}
 }
@@ -271,21 +276,21 @@ void test_color_check_flags(void) {
 						"Wrong marked colors");
 		delta_ok_diff(&colors[i], &ref);
 	}
-	
+
 	for (int i = 0; i < NUM_REF_COL; ++i) {
-	  TEST_ASSERT_EQUAL_UINT8_MESSAGE(3, colors[i].valid_spaces,
+		TEST_ASSERT_EQUAL_UINT8_MESSAGE(3, colors[i].valid_spaces,
 						"Wrong marked colors");
-	  delta_cie76_diff(&colors[i], &ref);
-	}
-	
-	for (int i = 0; i < NUM_REF_COL; ++i) {
-	  TEST_ASSERT_EQUAL_UINT8_MESSAGE(7, colors[i].valid_spaces,
-						"Wrong marked colors");
-	  convert_srgb_to_grayscale(&colors[i]);
+		delta_cie76_diff(&colors[i], &ref);
 	}
 
 	for (int i = 0; i < NUM_REF_COL; ++i) {
-	    TEST_ASSERT_EQUAL_UINT8_MESSAGE(15, colors[i].valid_spaces,
+		TEST_ASSERT_EQUAL_UINT8_MESSAGE(7, colors[i].valid_spaces,
+						"Wrong marked colors");
+		convert_srgb_to_grayscale(&colors[i]);
+	}
+
+	for (int i = 0; i < NUM_REF_COL; ++i) {
+		TEST_ASSERT_EQUAL_UINT8_MESSAGE(15, colors[i].valid_spaces,
 						"Wrong marked colors");
 	}
 }
@@ -298,7 +303,7 @@ void test_cie94_diff(void) {
 			diff_num = (c1 * (ref_const - c1)) / 2 + (c2 - c1 - 1);
 			Diff cur_diff = diffs[diff_num];
 			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-			    DELTA, cur_diff.cie94,
+			    C94_DIF_DLT, cur_diff.cie94,
 			    delta_cie94_diff(&colors[cur_diff.color1_index],
 					     &colors[cur_diff.color2_index]),
 			    "cie94 diff is too far off.");
@@ -315,7 +320,7 @@ void test_oklab_diff(void) {
 
 			Diff cur_diff = diffs[diff_num];
 			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-			    DELTA, cur_diff.oklab,
+			    OKL_DIF_DLT, cur_diff.oklab,
 			    delta_ok_diff(&colors[cur_diff.color1_index],
 					  &colors[cur_diff.color2_index]),
 			    "oklab diff is too far off.");
@@ -331,7 +336,7 @@ void test_cie76_diff(void) {
 			diff_num = (c1 * (ref_const - c1)) / 2 + (c2 - c1 - 1);
 			Diff cur_diff = diffs[diff_num];
 			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-			    DELTA, cur_diff.cie76,
+			    C76_DIF_DLT, cur_diff.cie76,
 			    delta_cie76_diff(&colors[cur_diff.color1_index],
 					     &colors[cur_diff.color2_index]),
 			    "cie76 diff is too far off.");
@@ -339,5 +344,53 @@ void test_cie76_diff(void) {
 	}
 }
 
+/* TODO (Tess): Test harness is all setup for this: just need to do the actual
+ * testing.*/
 void test_ciede2000_diff(void) {
+	for (int i = 0; i < NUM_PAIRS * 2; i += 2) {
+		struct cieLAB_test cols[2] = {0};
+		for (int j = 0; j < 2; ++j) {
+			cols[j].l = ediffs[i + j].l;
+			cols[j].a = ediffs[i + j].a;
+			cols[j].b = ediffs[i + j].b;
+		}
+		delta_ciede2000_diff_fast(&cols[0], &cols[1]);
+		for (int j = 0; j < 2; ++j) {
+			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+			    C20_DIF_DLT, ediffs[i + j].ap, cols[j].ap,
+			    "message");
+			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+			    C20_DIF_DLT, ediffs[i + j].cp, cols[j].cp,
+			    "message");
+			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+			    C20_DIF_DLT, ediffs[i + j].hp, cols[j].hp,
+			    "message");
+			if (j == 0) {
+				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+				    C20_DIF_DLT, ediffs[i + j].avghp,
+				    cols[j].avghp, "message");
+				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+				    C20_DIF_DLT, ediffs[i + j].g, cols[j].g,
+				    "message");
+				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+				    C20_DIF_DLT, ediffs[i + j].t, cols[j].t,
+				    "message");
+				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+				    C20_DIF_DLT, ediffs[i + j].sl, cols[j].sl,
+				    "message");
+				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+				    C20_DIF_DLT, ediffs[i + j].sc, cols[j].sc,
+				    "message");
+				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+				    C20_DIF_DLT, ediffs[i + j].sh, cols[j].sh,
+				    "message");
+				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+				    C20_DIF_DLT, ediffs[i + j].rt, cols[j].rt,
+				    "message");
+				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
+				    C20_DIF_DLT, ediffs[i + j].e2000,
+				    cols[j].e2000, "message");
+			}
+		}
+	}
 }

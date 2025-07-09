@@ -72,7 +72,9 @@ if (PALETTE_BUILD_TESTS)
   file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS src/test/*.c)
 
   add_executable(unit_tests ${TEST_SOURCES} ${IMPL_SOURCES})
-  target_compile_definitions(unity PRIVATE -DUNITY_INCLUDE_DOUBLE)
+  target_compile_definitions(unity PRIVATE UNITY_INCLUDE_DOUBLE)
+  target_compile_definitions(unit_tests PRIVATE $<$<CONFIG:Debug>:PALETTE_DEBUG>)
+
   target_link_libraries(unit_tests unity)
   
 
