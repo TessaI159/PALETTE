@@ -3,12 +3,9 @@
 
 #include <stdint.h>
 
-enum ColorSpace {
-	COLOR_OKLAB  = 1U,
-	COLOR_CIELAB = 2U,
-	COLOR_SRGB   = 4U,
-	COLOR_GRAY   = 8U
-};
+#define DEBUG
+
+enum ColorSpace { COLOR_SRGB, COLOR_OKLAB, COLOR_CIELAB, COLOR_GRAY };
 
 /* Supported color spaces */
 struct okLAB {
@@ -43,6 +40,12 @@ struct Color Color_create_norm(const double r, const double g, const double b);
 
 /* Calculates all spaces. Used for testing */
 void Color_calc_spaces(struct Color *color);
+
+#ifdef DEBUG
+double delta_ciede2000_diff_fast(const struct cieLAB sam,
+				 const struct cieLAB ref);
+void convert_srgb_to_grayscale(struct Color *color);
+#endif
 
 /* Euclidean oklab diff. ~35 cycles */
 double delta_ok_diff(struct Color *sam, struct Color *ref);

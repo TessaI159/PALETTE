@@ -72,7 +72,9 @@ if (PALETTE_BUILD_TESTS)
   file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS src/test/*.c)
 
   add_executable(unit_tests ${TEST_SOURCES} ${IMPL_SOURCES})
+  target_compile_definitions(unity PRIVATE -DUNITY_INCLUDE_DOUBLE)
   target_link_libraries(unit_tests unity)
+  
 
   target_include_directories(unit_tests PRIVATE
     ${PROJECT_SOURCE_DIR}/src
