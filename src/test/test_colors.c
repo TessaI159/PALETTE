@@ -44,21 +44,61 @@ static inline void print_diffs() {
 /* TODO (Tess): As with the others, print the calculated and the scanned values
  */
 static inline void print_e2000s() {
+	for (int i = 0; i < NUM_E2000_PAIR; ++i) {
+		printf("Pair %d\n", i);
+		printf("Calculated: \n");
+		printf("\t(l,a,b)\t\t\t\t(ap,cp,hp)\t\t\tavghp\t\t(g,t)\t\t\t("
+		       "sl,sc,sh)"
+		       "\t\t\trt\t\tdiff\n");
+		printf("lab1: "
+		       "\t(%f,%f,%f)\t(%f,%f,%f)\t%f\t(%f,%f)\t(%f,%f,%f)\t%"
+		       "f\t%f\n",
+		       e2000_diffs_calc[i].l[0], e2000_diffs_calc[i].a[0],
+		       e2000_diffs_calc[i].b[0], e2000_diffs_calc[i].ap[0],
+		       e2000_diffs_calc[i].cp[0], e2000_diffs_calc[i].hp[0],
+		       e2000_diffs_calc[i].avghp, e2000_diffs_calc[i].g,
+		       e2000_diffs_calc[i].t, e2000_diffs_calc[i].sl,
+		       e2000_diffs_calc[i].sc, e2000_diffs_calc[i].sh,
+		       e2000_diffs_calc[i].rt, e2000_diffs_calc[i].diff);
+		printf("lab1: "
+		       "\t(%f,%f,%f)\t(%f,%f,%f)\t%f\t(%f,%f)\t(%f,%f,%f)\t%"
+		       "f\t%f\n",
+		       e2000_diffs_calc[i].l[1], e2000_diffs_calc[i].a[1],
+		       e2000_diffs_calc[i].b[1], e2000_diffs_calc[i].ap[1],
+		       e2000_diffs_calc[i].cp[1], e2000_diffs_calc[i].hp[1],
+		       e2000_diffs_calc[i].avghp, e2000_diffs_calc[i].g,
+		       e2000_diffs_calc[i].t, e2000_diffs_calc[i].sl,
+		       e2000_diffs_calc[i].sc, e2000_diffs_calc[i].sh,
+		       e2000_diffs_calc[i].rt, e2000_diffs_calc[i].diff);
 
-	for (size_t i = 0; i < NUM_E2000_PAIR; ++i) {
-		E2000_diff calc_diff;
-		calc_diff.l[0] = colors[i].cielab.l;
-		calc_diff.a[0] = colors[i].cielab.a;
-		calc_diff.b[0] = colors[i].cielab.b;
+		printf("Scanned: \n");
+		printf("\t(l,a,b)\t\t\t\t(ap,cp,hp)\t\t\tavghp\t\t(g,t)\t\t\t("
+		       "sl,sc,sh)"
+		       "\t\t\trt\t\tdiff\n");
+		printf(
+		    "lab1: "
+		    "\t(%f,%f,%f)\t(%f,%f,%f)\t%f\t(%f,%f)\t(%f,%f,%f)\t%f\t%"
+		    "f\n",
+		    e2000_diffs_scanned[i].l[0], e2000_diffs_scanned[i].a[0],
+		    e2000_diffs_scanned[i].b[0], e2000_diffs_scanned[i].ap[0],
+		    e2000_diffs_scanned[i].cp[0], e2000_diffs_scanned[i].hp[0],
+		    e2000_diffs_scanned[i].avghp, e2000_diffs_scanned[i].g,
+		    e2000_diffs_scanned[i].t, e2000_diffs_scanned[i].sl,
+		    e2000_diffs_scanned[i].sc, e2000_diffs_scanned[i].sh,
+		    e2000_diffs_scanned[i].rt, e2000_diffs_scanned[i].diff);
+		printf(
+		    "lab1: "
+		    "\t(%f,%f,%f)\t(%f,%f,%f)\t%f\t(%f,%f)\t(%f,%f,%f)\t%f\t%"
+		    "f\n",
+		    e2000_diffs_scanned[i].l[1], e2000_diffs_scanned[i].a[1],
+		    e2000_diffs_scanned[i].b[1], e2000_diffs_scanned[i].ap[1],
+		    e2000_diffs_scanned[i].cp[1], e2000_diffs_scanned[i].hp[1],
+		    e2000_diffs_scanned[i].avghp, e2000_diffs_scanned[i].g,
+		    e2000_diffs_scanned[i].t, e2000_diffs_scanned[i].sl,
+		    e2000_diffs_scanned[i].sc, e2000_diffs_scanned[i].sh,
+		    e2000_diffs_scanned[i].rt, e2000_diffs_scanned[i].diff);
 
-		calc_diff.l[1] = colors[i + 1].cielab.l;
-		calc_diff.a[1] = colors[i + 1].cielab.a;
-		calc_diff.b[1] = colors[i + 1].cielab.b;
-		delta_ciede2000_diff_fast(&calc_diff);
-		printf("Computed: \n");
-		printf("Lab1: (%f, %f, %f)\nLab2: (%f, %f, %f)\n",
-		       calc_diff.l[0], calc_diff.a[0], calc_diff.b[0],
-		       calc_diff.l[1], calc_diff.a[1], calc_diff.b[1]);
+		printf("\n");
 	}
 }
 
@@ -199,7 +239,118 @@ void test_ok_diff(void) {
 }
 
 void test_ciede2000_diff(void) {
-	print_e2000s();
-	for (size_t i = 0; i < NUM_E2000_PAIR; ++i) {
+	for (int i = 0; i < NUM_E2000_PAIR; ++i) {
+
+		for (int j = 0; j < 2; ++j) {
+			const char *tmp_msg = "Pair %d color %d %s off by %f";
+			char	    act_msg[256];
+			/* lab values */
+			sprintf(act_msg, tmp_msg, i, j, "l",
+				fabs(e2000_diffs_scanned[i].l[j] -
+				     e2000_diffs_calc[i].l[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].l[j],
+			    e2000_diffs_calc[i].l[j], act_msg);
+
+			sprintf(act_msg, tmp_msg, i, j, "a",
+				fabs(e2000_diffs_scanned[i].a[j] -
+				     e2000_diffs_calc[i].a[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].a[j],
+			    e2000_diffs_calc[i].a[j], act_msg);
+
+			sprintf(act_msg, tmp_msg, i, j, "b",
+				fabs(e2000_diffs_scanned[i].b[j] -
+				     e2000_diffs_calc[i].b[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].b[j],
+			    e2000_diffs_calc[i].b[j], act_msg);
+
+			/* (ap, cp, hp ) */
+			sprintf(act_msg, tmp_msg, i, j, "ap",
+				fabs(e2000_diffs_scanned[i].ap[j] -
+				     e2000_diffs_calc[i].ap[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].ap[j],
+			    e2000_diffs_calc[i].ap[j], act_msg);
+
+			sprintf(act_msg, tmp_msg, i, j, "cp",
+				fabs(e2000_diffs_scanned[i].cp[j] -
+				     e2000_diffs_calc[i].cp[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].cp[j],
+			    e2000_diffs_calc[i].cp[j], act_msg);
+
+			sprintf(act_msg, tmp_msg, i, j, "hp",
+				fabs(e2000_diffs_scanned[i].hp[j] -
+				     e2000_diffs_calc[i].hp[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].hp[j],
+			    e2000_diffs_calc[i].hp[j], act_msg);
+		}
+		const char *tmp_msg = "Pair %d %s off by %f";
+		char	    act_msg[256];
+
+		sprintf(act_msg, tmp_msg, i, "avghp",
+			fabs(e2000_diffs_calc[i].avghp -
+			     e2000_diffs_scanned[i].avghp));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].avghp,
+		    e2000_diffs_calc[i].avghp, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "g",
+			fabs(e2000_diffs_calc[i].g -
+			     e2000_diffs_scanned[i].g));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].g,
+		    e2000_diffs_calc[i].g, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "t",
+			fabs(e2000_diffs_calc[i].t -
+			     e2000_diffs_scanned[i].t));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].t,
+		    e2000_diffs_calc[i].t, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "sl",
+			fabs(e2000_diffs_calc[i].sl -
+			     e2000_diffs_scanned[i].sl));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].sl,
+		    e2000_diffs_calc[i].sl, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "sc",
+			fabs(e2000_diffs_calc[i].sc -
+			     e2000_diffs_scanned[i].sc));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].sc,
+		    e2000_diffs_calc[i].sc, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "sh",
+			fabs(e2000_diffs_calc[i].sh -
+			     e2000_diffs_scanned[i].sh));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].sh,
+		    e2000_diffs_calc[i].sh, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "rt",
+			fabs(e2000_diffs_calc[i].rt -
+			     e2000_diffs_scanned[i].rt));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].rt,
+		    e2000_diffs_calc[i].rt, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "diff",
+			fabs(e2000_diffs_calc[i].diff -
+			     e2000_diffs_scanned[i].diff));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].diff,
+		    e2000_diffs_calc[i].diff, act_msg);
 	}
 }

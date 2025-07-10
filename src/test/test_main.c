@@ -90,6 +90,7 @@ static inline bool parse_e2000(const char *filename) {
 	}
 	char  line[MAX_LINE];
 	char *fields[MAX_FIELDS];
+	int   index;
 	fgets(line, sizeof(line), fp);
 	while (fgets(line, sizeof(line), fp)) {
 		int n = csv_parse_line(line, fields, MAX_FIELDS);
@@ -97,7 +98,7 @@ static inline bool parse_e2000(const char *filename) {
 			fprintf(stderr, "Unable to parse %s\n", filename);
 			return false;
 		}
-		int index = atoi(fields[PAIR]) - 1;
+		index = atoi(fields[PAIR]) - 1;
 
 		e2000_diffs_scanned[index].l[0]	 = strtof(fields[L], NULL);
 		e2000_diffs_scanned[index].a[0]	 = strtof(fields[A], NULL);
@@ -106,7 +107,6 @@ static inline bool parse_e2000(const char *filename) {
 		e2000_diffs_scanned[index].cp[0] = strtof(fields[CP], NULL);
 		e2000_diffs_scanned[index].hp[0] = strtof(fields[HP], NULL);
 
-		fgets(line, sizeof(line), fp);
 		e2000_diffs_scanned[index].avghp = strtof(fields[AVGHP], NULL);
 		e2000_diffs_scanned[index].g	 = strtof(fields[G], NULL);
 		e2000_diffs_scanned[index].t	 = strtof(fields[T], NULL);
@@ -128,6 +128,14 @@ static inline bool parse_e2000(const char *filename) {
 		e2000_diffs_scanned[index].ap[1] = strtof(fields[AP], NULL);
 		e2000_diffs_scanned[index].cp[1] = strtof(fields[CP], NULL);
 		e2000_diffs_scanned[index].hp[1] = strtof(fields[HP], NULL);
+	}
+	for (int i = 0; i < index + 1; ++i) {
+		for (int j = 0; j < 2; ++j) {
+			e2000_diffs_calc[i].l[j] = e2000_diffs_scanned[i].l[j];
+			e2000_diffs_calc[i].a[j] = e2000_diffs_scanned[i].a[j];
+			e2000_diffs_calc[i].b[j] = e2000_diffs_scanned[i].b[j];
+		}
+		delta_ciede2000_diff_fast(&e2000_diffs_calc[i]);
 	}
 	return true;
 }

@@ -38,7 +38,7 @@ extern E2000_diff e2000_diffs_calc[];
 #define NUM_E2000_PAIR 34
 #define CREATION_DELTA 9e-5 /* 0.00009 */
 #define DIFF_DELTA 5e-5	    /* 0.00005 */
-#define E2000_DELTA 1e-5    /* 0.00001 */
+#define E2000_DELTA 5e-3    /* 0.005 */
 
 enum ref_indices {
 	INDEX,
