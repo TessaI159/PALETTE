@@ -218,7 +218,6 @@ void test_cie94_diff(void) {
 			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
 			    DIFF_DELTA, cie94_diffs[i], cur_cie94, act_msg);
 			++i;
->>>>>>> unity_redux
 		}
 	}
 }
