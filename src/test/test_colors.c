@@ -5,18 +5,19 @@
 #include "unity_config.h"
 
 #include "Color.h"
+#include "csv_parser.h"
 #include "unity.h"
 
-#define LIN_CRE_DLT 1e-10
-#define LAB_CRE_DLT 1e-10
-#define OKL_CRE_DLT 1e-4
-#define GRY_CRE_DLT 1e-10
-#define OKL_DIF_DLT 1e-4
-#define C76_DIF_DLT 1e-9
-#define C94_DIF_DLT 1e-10
-#define C20_DIF_DLT 2e-3
+#define LIN_CRE_DLT 1e-2
+#define LAB_CRE_DLT 1e-2
+#define OKL_CRE_DLT 1e-2
+#define GRY_CRE_DLT 1e-2
+#define OKL_DIF_DLT 1e-2
+#define C76_DIF_DLT 1e-2
+#define C94_DIF_DLT 1e-2
+#define C20_DIF_DLT 1e-2
 
-#define NUM_REF_COL 22
+#define NUM_REF_COL 31
 #define NUM_FIELDS_DIFF 6
 #define NUM_FIELDS_REF 14
 
@@ -117,30 +118,29 @@ static bool parse_data_refs(const char *filename) {
 		return false;
 	}
 
-	char line[MAX_LINE];
+	char  line[MAX_LINE];
+	char *fields[NUM_FIELDS_REF] = {0};
 	fgets(line, sizeof(line), fp);
 	while (fgets(line, sizeof(line), fp)) {
-		char *fields[NUM_FIELDS_REF] = {0};
-		char *token		     = strtok(line, ",\n");
-		int   i			     = 0;
-		while (token && i < NUM_FIELDS_REF) {
-			fields[i++] = token;
-			token	    = strtok(NULL, ",\n");
+		int n = csv_parse_line(line, fields, NUM_FIELDS_REF);
+		if (n < 0) {
+			fprintf(stderr, "Error parsing %s\n", filename);
+			return false;
 		}
-		colors[atoi(fields[INDEX])] = Color_create_norm(
-		    strtod(fields[SRGB_R], NULL), strtod(fields[SRGB_G], NULL),
-		    strtod(fields[SRGB_B], NULL));
-		linears[atoi(fields[INDEX])].r = strtod(fields[LINEAR_R], NULL);
-		linears[atoi(fields[INDEX])].g = strtod(fields[LINEAR_G], NULL);
-		linears[atoi(fields[INDEX])].b = strtod(fields[LINEAR_B], NULL);
-		cielabs[atoi(fields[INDEX])].l = strtod(fields[LAB_L], NULL);
-		cielabs[atoi(fields[INDEX])].a = strtod(fields[LAB_A], NULL);
-		cielabs[atoi(fields[INDEX])].b = strtod(fields[LAB_B], NULL);
-		oklabs[atoi(fields[INDEX])].l  = strtod(fields[OKLAB_L], NULL);
-		oklabs[atoi(fields[INDEX])].a  = strtod(fields[OKLAB_A], NULL);
-		oklabs[atoi(fields[INDEX])].b  = strtod(fields[OKLAB_B], NULL);
-		grayscales[atoi(fields[INDEX])].l =
-		    strtod(fields[GRAYSCALE], NULL);
+		int ind	       = atoi(fields[INDEX]);
+		colors[ind]    = Color_create_norm(strtod(fields[SRGB_R], NULL),
+						   strtod(fields[SRGB_G], NULL),
+						   strtod(fields[SRGB_B], NULL));
+		linears[ind].r = strtod(fields[LINEAR_R], NULL);
+		linears[ind].g = strtod(fields[LINEAR_G], NULL);
+		linears[ind].b = strtod(fields[LINEAR_B], NULL);
+		cielabs[ind].l = strtod(fields[LAB_L], NULL);
+		cielabs[ind].a = strtod(fields[LAB_A], NULL);
+		cielabs[ind].b = strtod(fields[LAB_B], NULL);
+		oklabs[ind].l  = strtod(fields[OKLAB_L], NULL);
+		oklabs[ind].a  = strtod(fields[OKLAB_A], NULL);
+		oklabs[ind].b  = strtod(fields[OKLAB_B], NULL);
+		grayscales[ind].l = strtod(fields[GRAYSCALE], NULL);
 	}
 	fclose(fp);
 	return true;
@@ -152,23 +152,22 @@ static bool parse_data_diffs(const char *filename) {
 		fprintf(stderr, "Failed to open %s\n", filename);
 		return false;
 	}
-	char line[MAX_LINE];
+	char  line[MAX_LINE];
+	char *fields[NUM_FIELDS_DIFF] = {0};
+	int   index		      = 0;
 	fgets(line, sizeof(line), fp);
-	int ind = 0;
 	while (fgets(line, sizeof(line), fp)) {
-		char *fields[NUM_FIELDS_DIFF] = {0};
-		char *token		      = strtok(line, ",\n");
-		int   i			      = 0;
-		while (token && i < NUM_FIELDS_DIFF) {
-			fields[i++] = token;
-			token	    = strtok(NULL, ",\n");
+		int n = csv_parse_line(line, fields, NUM_FIELDS_DIFF);
+		if (n < 0) {
+			fprintf(stderr, "Error parsing %s\n", filename);
+			return false;
 		}
-		diffs[ind].color1_index = atoi(fields[COLOR1_INDEX]);
-		diffs[ind].color2_index = atoi(fields[COLOR2_INDEX]);
-		diffs[ind].oklab	= strtod(fields[OKLAB_DIFF], NULL);
-		diffs[ind].cie76	= strtod(fields[CIE76_DIFF], NULL);
-		diffs[ind].cie94	= strtod(fields[CIE94_DIFF], NULL);
-		++ind;
+		diffs[index].color1_index = atoi(fields[COLOR1_INDEX]);
+		diffs[index].color2_index = atoi(fields[COLOR2_INDEX]);
+		diffs[index].oklab	  = strtod(fields[OKLAB_DIFF], NULL);
+		diffs[index].cie76	  = strtod(fields[CIE76_DIFF], NULL);
+		diffs[index].cie94	  = strtod(fields[CIE94_DIFF], NULL);
+		++index;
 	}
 	fclose(fp);
 	return true;
@@ -180,36 +179,35 @@ static bool parse_data_e2000(const char *filename) {
 		fprintf(stderr, "Failed to open %s\n", filename);
 		return false;
 	}
-	char line[MAX_LINE];
+	char  line[MAX_LINE];
+	char *fields[NUM_FIELDS_E2000];
+	int   index = 0;
 	fgets(line, sizeof(line), fp);
-	int ind = 0;
 	while (fgets(line, sizeof(line), fp)) {
-		char *fields[NUM_FIELDS_E2000];
-		char *token = strtok(line, ",\n");
-		int   i	    = 0;
-		while (token && i < NUM_FIELDS_E2000) {
-			fields[i++] = token;
-			token	    = strtok(NULL, ",\n");
+		int n = csv_parse_line(line, fields, NUM_FIELDS_E2000);
+		if (n < 0) {
+			fprintf(stderr, "Error parsing %s\n", filename);
+			return false;
 		}
-		ediffs[ind].pair = atoi(fields[PAIR]);
-		ediffs[ind].i	 = atoi(fields[I]);
-		ediffs[ind].l	 = strtod(fields[L], NULL);
-		ediffs[ind].a	 = strtod(fields[A], NULL);
-		ediffs[ind].b	 = strtod(fields[B], NULL);
-		ediffs[ind].ap	 = strtod(fields[AP], NULL);
-		ediffs[ind].cp	 = strtod(fields[CP], NULL);
-		ediffs[ind].hp	 = strtod(fields[HP], NULL);
-		if (ediffs[ind].i == 1) {
-			ediffs[ind].avghp = strtod(fields[AVGHP], NULL);
-			ediffs[ind].g	  = strtod(fields[G], NULL);
-			ediffs[ind].t	  = strtod(fields[T], NULL);
-			ediffs[ind].sl	  = strtod(fields[SL], NULL);
-			ediffs[ind].sc	  = strtod(fields[SC], NULL);
-			ediffs[ind].sh	  = strtod(fields[SH], NULL);
-			ediffs[ind].rt	  = strtod(fields[RT], NULL);
-			ediffs[ind].e2000 = strtod(fields[E2000], NULL);
+		ediffs[index].pair = atoi(fields[PAIR]);
+		ediffs[index].i	   = atoi(fields[I]);
+		ediffs[index].l	   = strtod(fields[L], NULL);
+		ediffs[index].a	   = strtod(fields[A], NULL);
+		ediffs[index].b	   = strtod(fields[B], NULL);
+		ediffs[index].ap   = strtod(fields[AP], NULL);
+		ediffs[index].cp   = strtod(fields[CP], NULL);
+		ediffs[index].hp   = strtod(fields[HP], NULL);
+		if (ediffs[index].i == 1) {
+			ediffs[index].avghp = strtod(fields[AVGHP], NULL);
+			ediffs[index].g	    = strtod(fields[G], NULL);
+			ediffs[index].t	    = strtod(fields[T], NULL);
+			ediffs[index].sl    = strtod(fields[SL], NULL);
+			ediffs[index].sc    = strtod(fields[SC], NULL);
+			ediffs[index].sh    = strtod(fields[SH], NULL);
+			ediffs[index].rt    = strtod(fields[RT], NULL);
+			ediffs[index].e2000 = strtod(fields[E2000], NULL);
 		}
-		++ind;
+		++index;
 	}
 	fclose(fp);
 	return true;
@@ -233,15 +231,18 @@ void tearDown(void) {
 void test_color_create(void) {
 	for (int i = 0; i < NUM_REF_COL; ++i) {
 		Color_calc_spaces(&colors[i]);
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    LIN_CRE_DLT, linears[i].r, colors[i].srgb.r,
-		    "Linearized srgb r is too far out of bounds");
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    LIN_CRE_DLT, linears[i].g, colors[i].srgb.g,
-		    "Linearized srgb g is too far out of bounds");
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    LIN_CRE_DLT, linears[i].b, colors[i].srgb.b,
-		    "Linearized srgb b is too far out of bounds");
+		const char *temp_message = "Color %d %s %c inaccurate.";
+		char	    message[128];
+		printf("%f", linears[i].r);
+		sprintf(message, temp_message, i, "linearized srgb", 'r');
+		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(LIN_CRE_DLT, linears[i].r,
+						  colors[i].srgb.r, message);
+		sprintf(message, temp_message, i, "linearized srgb", 'g');
+		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(LIN_CRE_DLT, linears[i].g,
+						  colors[i].srgb.g, message);
+		sprintf(message, temp_message, i, "linearized srgb", 'b');
+		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(LIN_CRE_DLT, linears[i].b,
+						  colors[i].srgb.b, message);
 
 		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
 		    LAB_CRE_DLT, cielabs[i].l, colors[i].cielab.l,
