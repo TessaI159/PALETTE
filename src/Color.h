@@ -5,6 +5,8 @@
 
 enum ColorSpace { COLOR_SRGB, COLOR_OKLAB, COLOR_CIELAB, COLOR_GRAY };
 
+typedef struct E2000_diff E200_diff;
+
 /* Supported color spaces */
 struct okLAB {
 	float l, a, b;
@@ -32,9 +34,10 @@ struct Color {
 };
 
 #ifdef PALETTE_DEBUG
-void Color_print(struct Color *color);
-int  Color_has_space(const struct Color *color, enum ColorSpace space);
-void convert_srgb_to_grayscale(struct Color *color);
+void  Color_print(struct Color *color);
+int   Color_has_space(const struct Color *color, enum ColorSpace space);
+void  convert_srgb_to_grayscale(struct Color *color);
+float delta_ciede2000_diff_fast(struct E2000_diff *diff);
 #endif
 
 /* Must be constructed with rgb for now */

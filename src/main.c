@@ -76,8 +76,8 @@ int main(int argc, char **argv) {
 	query_features(&features);
 	printf("Color is %zu bytes\n", sizeof(struct Color));
 
-	Color col1 = Color_create(rand() * 255, rand() * 255, rand() * 255);
-	Color col2 = Color_create(rand() * 255, rand() * 255, rand() * 255);
+	Color col1 = Color_create(rand() % 255, rand() % 255, rand() % 255);
+	Color col2 = Color_create(rand() % 255, rand() % 255, rand() % 255);
 
 	Color_calc_spaces(&col1);
 	Color_calc_spaces(&col2);

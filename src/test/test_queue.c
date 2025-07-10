@@ -17,6 +17,7 @@ void test_queue_setup(void) {
 	Queue_create(&q, -1);
 	TEST_ASSERT_EQUAL_UINT_MESSAGE(2, q.cap,
 				       "Wrong negative initial capacity");
+	Queue_destroy(&q);
 }
 
 void test_queue_push(void) {
