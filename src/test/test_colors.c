@@ -1,422 +1,359 @@
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "unity_config.h"
+#include <stdio.h>
 
 #include "Color.h"
+#include "test_shared.h"
 #include "unity.h"
 
-#define LIN_CRE_DLT 1e-10
-#define LAB_CRE_DLT 1e-10
-#define OKL_CRE_DLT 1e-4
-#define GRY_CRE_DLT 1e-10
-#define OKL_DIF_DLT 1e-4
-#define C76_DIF_DLT 1e-9
-#define C94_DIF_DLT 1e-10
-#define C20_DIF_DLT 1e-2
+static inline void print_refs() {
+	for (size_t i = 0; i < NUM_REF_COL; ++i) {
+		printf("Calculated: \n");
+		Color_print(&colors[i]);
+		printf("Scanned: \n");
+		printf("Linear: (%f, %f, %f)\n", linears[i].r, linears[i].g,
+		       linears[i].b);
+		printf("okLAB: (%f, %f, %f)\n", oklabs[i].l, oklabs[i].a,
+		       oklabs[i].b);
+		printf("cieLAB: (%f, %f, %f)\n", cielabs[i].l, cielabs[i].a,
+		       cielabs[i].b);
+		printf("Grayscale: %f\n", grayscales[i].l);
 
-#define NUM_REF_COL 22
-#define NUM_FIELDS_DIFF 6
-#define NUM_FIELDS_REF 14
-
-#define MAX_LINE 2048
-#define NUM_DIFFS ((NUM_REF_COL - 1) * (NUM_REF_COL) / 2)
-
-#define NUM_FIELDS_E2000 16
-#define NUM_PAIRS 34
-
-typedef struct Diff {
-	int    color1_index;
-	int    color2_index;
-	double oklab;
-	double cie76;
-	double cie94;
-	double ciede2000;
-} Diff;
-
-typedef struct Diff_e2000 {
-	int    pair;
-	int    i;
-	double l;
-	double a;
-	double b;
-	double ap;
-	double cp;
-	double hp;
-	double avghp;
-	double g;
-	double t;
-	double sl;
-	double sc;
-	double sh;
-	double rt;
-	double e2000;
-} Diff_e2000;
-
-enum diff_csv_indices {
-	COLOR1_INDEX = 0,
-	COLOR2_INDEX,
-	OKLAB_DIFF,
-	CIE76_DIFF,
-	CIE94_DIFF
-};
-
-enum ref_csv_indices {
-	INDEX = 0,
-	SRGB_R,
-	SRGB_G,
-	SRGB_B,
-	LINEAR_R,
-	LINEAR_G,
-	LINEAR_B,
-	LAB_L,
-	LAB_A,
-	LAB_B,
-	OKLAB_L,
-	OKLAB_A,
-	OKLAB_B,
-	GRAYSCALE
-};
-
-enum e2000_csv_indices {
-	PAIR,
-	I,
-	L,
-	A,
-	B,
-	AP,
-	CP,
-	HP,
-	AVGHP,
-	G,
-	T,
-	SL,
-	SC,
-	SH,
-	RT,
-	E2000
-};
-
-Diff		 diffs[NUM_DIFFS];
-Diff_e2000	 ediffs[NUM_PAIRS * 2];
-struct Color	 colors[NUM_REF_COL];
-struct sRGB	 linears[NUM_REF_COL];
-struct cieLAB	 cielabs[NUM_REF_COL];
-struct okLAB	 oklabs[NUM_REF_COL];
-struct Grayscale grayscales[NUM_REF_COL];
-
-static inline void print_color(const struct Color color) {
-	printf("(%f,%f,%f)\n", color.srgb.r, color.srgb.g, color.srgb.b);
+		printf("\n\n");
+	}
 }
 
-// Returns number of fields if all are valid, or -1 if any field is empty
-static int split_csv(char *line, char **fields, int max_fields) {
-	int   count = 0;
-	char *start = line;
 
-	while (count < max_fields) {
-		char *comma = strchr(start, ',');
-		if (comma) {
-			*comma		= '\0';
-			fields[count++] = start;
-			start		= comma + 1;
-		} else {
-			fields[count++] = start;
-			break;
+static inline void print_diffs() {
+	size_t i = 0;
+	for (size_t i1 = 0; i1 < NUM_REF_COL; ++i1) {
+		for (size_t i2 = i1 + 1; i2 < NUM_REF_COL; ++i2) {
+			printf("diff (%zu, %zu): \nCalculated: \noklab: "
+			       "%f\ncie76: %f\ncie94 "
+			       "%f\n",
+			       i1, i2, delta_ok_diff(&colors[i1], &colors[i2]),
+			       delta_cie76_diff(&colors[i1], &colors[i2]),
+			       delta_cie94_diff(&colors[i1], &colors[i2]));
+
+			printf("Scanned: \n");
+			printf("oklab: %f\ncie76 %f\ncie94 "
+			       "%f\n\n",
+			       oklab_diffs[i], cie76_diffs[i], cie94_diffs[i]);
+			++i;
 		}
 	}
-
-	while (count < max_fields) {
-		fields[count++] = NULL;
-	}
-
-	// Validation: check for NULL or empty strings
-	for (int i = 0; i < max_fields; ++i) {
-		if (!fields[i] || fields[i][0] == '\0') {
-			return -1;
-		}
-	}
-	return max_fields;
 }
 
-static bool parse_data_refs(const char *filename) {
-	FILE *fp = fopen(filename, "r");
-	if (!fp) {
-		fprintf(stderr, "Failed to open %s\n", filename);
-		return false;
-	}
-	char line[MAX_LINE];
-	fgets(line, sizeof(line), fp); // header
-	while (fgets(line, sizeof(line), fp)) {
-		char *fields[NUM_FIELDS_REF] = {0};
-		line[strcspn(line, "\r\n")]  = '\0';
-		if (split_csv(line, fields, NUM_FIELDS_REF) == -1) {
-			fprintf(stderr, "Too few fields in line: %s file: %s\n",
-				line, filename);
-			continue;
-		}
-		int idx	       = atoi(fields[INDEX]);
-		colors[idx]    = Color_create_norm(strtod(fields[SRGB_R], NULL),
-						   strtod(fields[SRGB_G], NULL),
-						   strtod(fields[SRGB_B], NULL));
-		linears[idx].r = strtod(fields[LINEAR_R], NULL);
-		linears[idx].g = strtod(fields[LINEAR_G], NULL);
-		linears[idx].b = strtod(fields[LINEAR_B], NULL);
-		cielabs[idx].l = strtod(fields[LAB_L], NULL);
-		cielabs[idx].a = strtod(fields[LAB_A], NULL);
-		cielabs[idx].b = strtod(fields[LAB_B], NULL);
-		oklabs[idx].l  = strtod(fields[OKLAB_L], NULL);
-		oklabs[idx].a  = strtod(fields[OKLAB_A], NULL);
-		oklabs[idx].b  = strtod(fields[OKLAB_B], NULL);
-		grayscales[idx].l = strtod(fields[GRAYSCALE], NULL);
-	}
-	fclose(fp);
-	return true;
-}
+/* TODO (Tess): As with the others, print the calculated and the scanned values
+ */
+static inline void print_e2000s() {
+	for (int i = 0; i < NUM_E2000_PAIR; ++i) {
+		printf("Pair %d\n", i);
+		printf("Calculated: \n");
+		printf("\t(l,a,b)\t\t\t\t(ap,cp,hp)\t\t\tavghp\t\t(g,t)\t\t\t("
+		       "sl,sc,sh)"
+		       "\t\t\trt\t\tdiff\n");
+		printf("lab1: "
+		       "\t(%f,%f,%f)\t(%f,%f,%f)\t%f\t(%f,%f)\t(%f,%f,%f)\t%"
+		       "f\t%f\n",
+		       e2000_diffs_calc[i].l[0], e2000_diffs_calc[i].a[0],
+		       e2000_diffs_calc[i].b[0], e2000_diffs_calc[i].ap[0],
+		       e2000_diffs_calc[i].cp[0], e2000_diffs_calc[i].hp[0],
+		       e2000_diffs_calc[i].avghp, e2000_diffs_calc[i].g,
+		       e2000_diffs_calc[i].t, e2000_diffs_calc[i].sl,
+		       e2000_diffs_calc[i].sc, e2000_diffs_calc[i].sh,
+		       e2000_diffs_calc[i].rt, e2000_diffs_calc[i].diff);
+		printf("lab1: "
+		       "\t(%f,%f,%f)\t(%f,%f,%f)\t%f\t(%f,%f)\t(%f,%f,%f)\t%"
+		       "f\t%f\n",
+		       e2000_diffs_calc[i].l[1], e2000_diffs_calc[i].a[1],
+		       e2000_diffs_calc[i].b[1], e2000_diffs_calc[i].ap[1],
+		       e2000_diffs_calc[i].cp[1], e2000_diffs_calc[i].hp[1],
+		       e2000_diffs_calc[i].avghp, e2000_diffs_calc[i].g,
+		       e2000_diffs_calc[i].t, e2000_diffs_calc[i].sl,
+		       e2000_diffs_calc[i].sc, e2000_diffs_calc[i].sh,
+		       e2000_diffs_calc[i].rt, e2000_diffs_calc[i].diff);
 
-static bool parse_data_diffs(const char *filename) {
-	FILE *fp = fopen(filename, "r");
-	if (!fp) {
-		fprintf(stderr, "Failed to open %s\n", filename);
-		return false;
-	}
-	char line[MAX_LINE];
-	fgets(line, sizeof(line), fp); // header
-	int ind = 0;
-	while (fgets(line, sizeof(line), fp)) {
-		char *fields[NUM_FIELDS_DIFF] = {0};
-		line[strcspn(line, "\r\n")]   = '\0';
-		if (split_csv(line, fields, NUM_FIELDS_DIFF) == -1) {
-			fprintf(stderr, "Too few fields in line: %s file: %s\n",
-				line, filename);
-			continue;
-		}
-		diffs[ind].color1_index = atoi(fields[COLOR1_INDEX]);
-		diffs[ind].color2_index = atoi(fields[COLOR2_INDEX]);
-		diffs[ind].oklab	= strtod(fields[OKLAB_DIFF], NULL);
-		diffs[ind].cie76	= strtod(fields[CIE76_DIFF], NULL);
-		diffs[ind].cie94	= strtod(fields[CIE94_DIFF], NULL);
-		++ind;
-	}
-	fclose(fp);
-	return true;
-}
+		printf("Scanned: \n");
+		printf("\t(l,a,b)\t\t\t\t(ap,cp,hp)\t\t\tavghp\t\t(g,t)\t\t\t("
+		       "sl,sc,sh)"
+		       "\t\t\trt\t\tdiff\n");
+		printf(
+		    "lab1: "
+		    "\t(%f,%f,%f)\t(%f,%f,%f)\t%f\t(%f,%f)\t(%f,%f,%f)\t%f\t%"
+		    "f\n",
+		    e2000_diffs_scanned[i].l[0], e2000_diffs_scanned[i].a[0],
+		    e2000_diffs_scanned[i].b[0], e2000_diffs_scanned[i].ap[0],
+		    e2000_diffs_scanned[i].cp[0], e2000_diffs_scanned[i].hp[0],
+		    e2000_diffs_scanned[i].avghp, e2000_diffs_scanned[i].g,
+		    e2000_diffs_scanned[i].t, e2000_diffs_scanned[i].sl,
+		    e2000_diffs_scanned[i].sc, e2000_diffs_scanned[i].sh,
+		    e2000_diffs_scanned[i].rt, e2000_diffs_scanned[i].diff);
+		printf(
+		    "lab1: "
+		    "\t(%f,%f,%f)\t(%f,%f,%f)\t%f\t(%f,%f)\t(%f,%f,%f)\t%f\t%"
+		    "f\n",
+		    e2000_diffs_scanned[i].l[1], e2000_diffs_scanned[i].a[1],
+		    e2000_diffs_scanned[i].b[1], e2000_diffs_scanned[i].ap[1],
+		    e2000_diffs_scanned[i].cp[1], e2000_diffs_scanned[i].hp[1],
+		    e2000_diffs_scanned[i].avghp, e2000_diffs_scanned[i].g,
+		    e2000_diffs_scanned[i].t, e2000_diffs_scanned[i].sl,
+		    e2000_diffs_scanned[i].sc, e2000_diffs_scanned[i].sh,
+		    e2000_diffs_scanned[i].rt, e2000_diffs_scanned[i].diff);
 
-static bool parse_data_e2000(const char *filename) {
-	FILE *fp = fopen(filename, "r");
-	if (!fp) {
-		fprintf(stderr, "Failed to open %s\n", filename);
-		return false;
-	}
-	char line[MAX_LINE];
-	fgets(line, sizeof(line), fp); // header
-	int ind = 0;
-	while (fgets(line, sizeof(line), fp)) {
-		char *fields[NUM_FIELDS_E2000] = {0};
-		line[strcspn(line, "\r\n")]    = '\0';
-		if (split_csv(line, fields, NUM_FIELDS_E2000) == -1) {
-			fprintf(stderr, "Too few fields in line: %s file: %s\n",
-				line, filename);
-			continue;
-		}
-		ediffs[ind].pair = atoi(fields[PAIR]);
-		ediffs[ind].i	 = atoi(fields[I]);
-		ediffs[ind].l	 = strtod(fields[L], NULL);
-		ediffs[ind].a	 = strtod(fields[A], NULL);
-		ediffs[ind].b	 = strtod(fields[B], NULL);
-		ediffs[ind].ap	 = strtod(fields[AP], NULL);
-		ediffs[ind].cp	 = strtod(fields[CP], NULL);
-		ediffs[ind].hp	 = strtod(fields[HP], NULL);
-		if (ediffs[ind].i == 1) {
-			ediffs[ind].avghp = strtod(fields[AVGHP], NULL);
-			ediffs[ind].g	  = strtod(fields[G], NULL);
-			ediffs[ind].t	  = strtod(fields[T], NULL);
-			ediffs[ind].sl	  = strtod(fields[SL], NULL);
-			ediffs[ind].sc	  = strtod(fields[SC], NULL);
-			ediffs[ind].sh	  = strtod(fields[SH], NULL);
-			ediffs[ind].rt	  = strtod(fields[RT], NULL);
-			ediffs[ind].e2000 = strtod(fields[E2000], NULL);
-		}
-		++ind;
-	}
-	fclose(fp);
-	return true;
-}
-void setUp(void) {
-	if (!parse_data_diffs("sharma_pairwise_differences.csv")) {
-		TEST_FAIL_MESSAGE("Could not load csv data.");
-	}
-	if (!parse_data_refs("sharma_reference_colors.csv")) {
-		TEST_FAIL_MESSAGE("Could not load csv data.");
-	}
-	if (!parse_data_e2000("sharma_e2000.csv")) {
-		TEST_FAIL_MESSAGE("Could not load csv data.");
-	}
-}
-
-void tearDown(void) {
-}
-
-void test_color_create(void) {
-	for (int i = 0; i < NUM_REF_COL; ++i) {
-		Color_calc_spaces(&colors[i]);
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    LIN_CRE_DLT, linears[i].r, colors[i].srgb.r,
-		    "Linearized srgb r is too far out of bounds");
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    LIN_CRE_DLT, linears[i].g, colors[i].srgb.g,
-		    "Linearized srgb g is too far out of bounds");
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    LIN_CRE_DLT, linears[i].b, colors[i].srgb.b,
-		    "Linearized srgb b is too far out of bounds");
-
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    LAB_CRE_DLT, cielabs[i].l, colors[i].cielab.l,
-		    "cielab l is too far out of bounds");
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    LAB_CRE_DLT, cielabs[i].a, colors[i].cielab.a,
-		    "cielab a is too far out of bounds");
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    LAB_CRE_DLT, cielabs[i].b, colors[i].cielab.b,
-		    "cielab b is too far out of bounds");
-
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    OKL_CRE_DLT, oklabs[i].l, colors[i].oklab.l,
-		    "oklab l is too far out of bounds");
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    OKL_CRE_DLT, oklabs[i].a, colors[i].oklab.a,
-		    "oklab a is too far out of bounds");
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    OKL_CRE_DLT, oklabs[i].b, colors[i].oklab.b,
-		    "oklab b is too far out of bounds");
-
-		TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-		    GRY_CRE_DLT, grayscales[i].l, colors[i].grayscale.l,
-		    "grayscale is too far out of bounds");
+		printf("\n");
 	}
 }
 
 void test_color_check_flags(void) {
-	struct Color ref = Color_create(1, 1, 1);
-	for (int i = 0; i < NUM_REF_COL; ++i) {
-		TEST_ASSERT_EQUAL_UINT8_MESSAGE(1, colors[i].valid_spaces,
-						"Wrong marked colors");
-		delta_ok_diff(&colors[i], &ref);
-	}
+	struct Color test1 = Color_create(124, 191, 171);
+	struct Color test2 = Color_create(255, 193, 204);
 
-	for (int i = 0; i < NUM_REF_COL; ++i) {
-		TEST_ASSERT_EQUAL_UINT8_MESSAGE(3, colors[i].valid_spaces,
-						"Wrong marked colors");
-		delta_cie76_diff(&colors[i], &ref);
-	}
+	TEST_ASSERT_TRUE(Color_has_space(&test1, COLOR_SRGB));
+	TEST_ASSERT_TRUE(Color_has_space(&test2, COLOR_SRGB));
 
-	for (int i = 0; i < NUM_REF_COL; ++i) {
-		TEST_ASSERT_EQUAL_UINT8_MESSAGE(7, colors[i].valid_spaces,
-						"Wrong marked colors");
-		convert_srgb_to_grayscale(&colors[i]);
-	}
+	delta_ok_diff(&test1, &test2);
 
-	for (int i = 0; i < NUM_REF_COL; ++i) {
-		TEST_ASSERT_EQUAL_UINT8_MESSAGE(15, colors[i].valid_spaces,
-						"Wrong marked colors");
-	}
+	TEST_ASSERT_TRUE(Color_has_space(&test1, COLOR_OKLAB));
+	TEST_ASSERT_TRUE(Color_has_space(&test2, COLOR_OKLAB));
+
+	delta_ciede2000_diff(&test1, &test2);
+
+	TEST_ASSERT_TRUE(Color_has_space(&test1, COLOR_CIELAB));
+	TEST_ASSERT_TRUE(Color_has_space(&test2, COLOR_CIELAB));
+
+	convert_srgb_to_grayscale(&test1);
+	convert_srgb_to_grayscale(&test2);
+
+	TEST_ASSERT_TRUE(Color_has_space(&test1, COLOR_GRAY));
+	TEST_ASSERT_TRUE(Color_has_space(&test2, COLOR_GRAY));
 }
 
-void test_cie94_diff(void) {
-	int	  diff_num  = 0;
-	const int ref_const = NUM_REF_COL + NUM_REF_COL - 1;
-	for (int c1 = 0; c1 < NUM_REF_COL; ++c1) {
-		for (int c2 = c1 + 1; c2 < NUM_REF_COL; ++c2) {
-			diff_num = (c1 * (ref_const - c1)) / 2 + (c2 - c1 - 1);
-			Diff cur_diff = diffs[diff_num];
-			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-			    C94_DIF_DLT, cur_diff.cie94,
-			    delta_cie94_diff(&colors[cur_diff.color1_index],
-					     &colors[cur_diff.color2_index]),
-			    "cie94 diff is too far off.");
-		}
-	}
-}
+void test_color_create(void) {
+	for (size_t i = 0; i < NUM_REF_COL; ++i) {
+		Color_calc_spaces(&colors[i]);
+		const char *tmp_msg = "Color %d %s %c off by %f";
+		char	    act_msg[256];
+		/* Linear sRGBs */
+		sprintf(act_msg, tmp_msg, i, "linear srgb", 'r',
+			fabs(linears[i].r - colors[i].srgb.r));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, linears[i].r,
+						 colors[i].srgb.r, act_msg);
+		sprintf(act_msg, tmp_msg, i, "linear srgb", 'g',
+			fabs(linears[i].g - colors[i].srgb.g));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, linears[i].g,
+						 colors[i].srgb.g, act_msg);
+		sprintf(act_msg, tmp_msg, i, "linear srgb", 'b',
+			fabs(linears[i].b - colors[i].srgb.b));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, linears[i].b,
+						 colors[i].srgb.b, act_msg);
 
-void test_oklab_diff(void) {
-	int	  diff_num  = 0;
-	const int ref_const = NUM_REF_COL + NUM_REF_COL - 1;
-	for (int c1 = 0; c1 < NUM_REF_COL; ++c1) {
-		for (int c2 = c1 + 1; c2 < NUM_REF_COL; ++c2) {
-			diff_num = (c1 * (ref_const - c1)) / 2 + (c2 - c1 - 1);
+		/* cieLABs */
+		sprintf(act_msg, tmp_msg, i, "cielab", 'l',
+			fabs(cielabs[i].l - colors[i].cielab.l));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, cielabs[i].l,
+						 colors[i].cielab.l, act_msg);
+		sprintf(act_msg, tmp_msg, i, "cielab", 'a',
+			fabs(cielabs[i].a - colors[i].cielab.a));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, cielabs[i].a,
+						 colors[i].cielab.a, act_msg);
+		sprintf(act_msg, tmp_msg, i, "cielab", 'b',
+			fabs(cielabs[i].b - colors[i].cielab.b));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, cielabs[i].b,
+						 colors[i].cielab.b, act_msg);
 
-			Diff cur_diff = diffs[diff_num];
-			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-			    OKL_DIF_DLT, cur_diff.oklab,
-			    delta_ok_diff(&colors[cur_diff.color1_index],
-					  &colors[cur_diff.color2_index]),
-			    "oklab diff is too far off.");
-		}
+		/* okLABs */
+		sprintf(act_msg, tmp_msg, i, "oklab", 'l',
+			fabs(oklabs[i].l - colors[i].oklab.l));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, oklabs[i].l,
+						 colors[i].oklab.l, act_msg);
+		sprintf(act_msg, tmp_msg, i, "oklab", 'a',
+			fabs(oklabs[i].a - colors[i].oklab.a));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, oklabs[i].a,
+						 colors[i].oklab.a, act_msg);
+		sprintf(act_msg, tmp_msg, i, "oklab", 'b',
+			fabs(oklabs[i].b - colors[i].oklab.b));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, oklabs[i].b,
+						 colors[i].oklab.b, act_msg);
+
+		/* Grayscale */
+		sprintf(act_msg, tmp_msg, i, "grayscale", 'l',
+			fabs(grayscales[i].l - colors[i].grayscale.l));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    CREATION_DELTA, grayscales[i].l, colors[i].grayscale.l,
+		    act_msg);
 	}
 }
 
 void test_cie76_diff(void) {
-	int	  diff_num  = 0;
-	const int ref_const = NUM_REF_COL + NUM_REF_COL - 1;
-	for (int c1 = 0; c1 < NUM_REF_COL; ++c1) {
-		for (int c2 = c1 + 1; c2 < NUM_REF_COL; ++c2) {
-			diff_num = (c1 * (ref_const - c1)) / 2 + (c2 - c1 - 1);
-			Diff cur_diff = diffs[diff_num];
-			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-			    C76_DIF_DLT, cur_diff.cie76,
-			    delta_cie76_diff(&colors[cur_diff.color1_index],
-					     &colors[cur_diff.color2_index]),
-			    "cie76 diff is too far off.");
+	size_t i = 0;
+	for (size_t i1 = 0; i1 < NUM_REF_COL; ++i1) {
+		for (size_t i2 = i1 + 1; i2 < NUM_REF_COL; ++i2) {
+			float cur_cie76 =
+			    delta_cie76_diff(&colors[i1], &colors[i2]);
+
+			const char *tmp_msg =
+			    "delta_cie76_diff(%zu, %zu) off by  %f.";
+			char act_msg[128];
+			sprintf(act_msg, tmp_msg, i1, i2,
+				fabs(cur_cie76 - cie76_diffs[i]));
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    DIFF_DELTA, cie76_diffs[i], cur_cie76, act_msg);
+			++i;
+		}
+	}
+}
+
+
+void test_cie94_diff(void) {
+	size_t i = 0;
+	for (size_t i1 = 0; i1 < NUM_REF_COL; ++i1) {
+		for (size_t i2 = i1 + 1; i2 < NUM_REF_COL; ++i2) {
+			float cur_cie94 =
+			    delta_cie94_diff(&colors[i1], &colors[i2]);
+
+			const char *tmp_msg =
+			    "delta_cie94_diff(%zu, %zu) off by  %f.";
+			char act_msg[128];
+			sprintf(act_msg, tmp_msg, i1, i2,
+				fabs(cur_cie94 - cie94_diffs[i]));
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    DIFF_DELTA, cie94_diffs[i], cur_cie94, act_msg);
+			++i;
+>>>>>>> unity_redux
+		}
+	}
+}
+
+void test_ok_diff(void) {
+	size_t i = 0;
+	for (size_t i1 = 0; i1 < NUM_REF_COL; ++i1) {
+		for (size_t i2 = i1 + 1; i2 < NUM_REF_COL; ++i2) {
+			float cur_ok = delta_ok_diff(&colors[i1], &colors[i2]);
+
+			const char *tmp_msg =
+			    "delta_ok_diff(%zu, %zu) off by  %f.";
+			char act_msg[128];
+			sprintf(act_msg, tmp_msg, i1, i2,
+				fabs(cur_ok - oklab_diffs[i]));
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    DIFF_DELTA, oklab_diffs[i], cur_ok, act_msg);
+			++i;
 		}
 	}
 }
 
 void test_ciede2000_diff(void) {
-	for (int i = 0; i < NUM_PAIRS * 2; i += 2) {
-		struct cieLAB_test cols[2] = {0};
+	for (int i = 0; i < NUM_E2000_PAIR; ++i) {
+
 		for (int j = 0; j < 2; ++j) {
-			cols[j].l = ediffs[i + j].l;
-			cols[j].a = ediffs[i + j].a;
-			cols[j].b = ediffs[i + j].b;
+			const char *tmp_msg = "Pair %d color %d %s off by %f";
+			char	    act_msg[256];
+			/* lab values */
+			sprintf(act_msg, tmp_msg, i, j, "l",
+				fabs(e2000_diffs_scanned[i].l[j] -
+				     e2000_diffs_calc[i].l[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].l[j],
+			    e2000_diffs_calc[i].l[j], act_msg);
+
+			sprintf(act_msg, tmp_msg, i, j, "a",
+				fabs(e2000_diffs_scanned[i].a[j] -
+				     e2000_diffs_calc[i].a[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].a[j],
+			    e2000_diffs_calc[i].a[j], act_msg);
+
+			sprintf(act_msg, tmp_msg, i, j, "b",
+				fabs(e2000_diffs_scanned[i].b[j] -
+				     e2000_diffs_calc[i].b[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].b[j],
+			    e2000_diffs_calc[i].b[j], act_msg);
+
+			/* (ap, cp, hp ) */
+			sprintf(act_msg, tmp_msg, i, j, "ap",
+				fabs(e2000_diffs_scanned[i].ap[j] -
+				     e2000_diffs_calc[i].ap[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].ap[j],
+			    e2000_diffs_calc[i].ap[j], act_msg);
+
+			sprintf(act_msg, tmp_msg, i, j, "cp",
+				fabs(e2000_diffs_scanned[i].cp[j] -
+				     e2000_diffs_calc[i].cp[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].cp[j],
+			    e2000_diffs_calc[i].cp[j], act_msg);
+
+			sprintf(act_msg, tmp_msg, i, j, "hp",
+				fabs(e2000_diffs_scanned[i].hp[j] -
+				     e2000_diffs_calc[i].hp[j]));
+
+			TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+			    E2000_DELTA, e2000_diffs_scanned[i].hp[j],
+			    e2000_diffs_calc[i].hp[j], act_msg);
 		}
-		delta_ciede2000_diff_fast(&cols[0], &cols[1]);
-		for (int j = 0; j < 2; ++j) {
-			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-			    C20_DIF_DLT, ediffs[i + j].ap, cols[j].ap,
-			    "message");
-			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-			    C20_DIF_DLT, ediffs[i + j].cp, cols[j].cp,
-			    "message");
-			TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-			    C20_DIF_DLT, ediffs[i + j].hp, cols[j].hp,
-			    "message");
-			if (j == 0) {
-				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-				    C20_DIF_DLT, ediffs[i + j].avghp,
-				    cols[j].avghp, "message");
-				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-				    C20_DIF_DLT, ediffs[i + j].g, cols[j].g,
-				    "message");
-				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-				    C20_DIF_DLT, ediffs[i + j].t, cols[j].t,
-				    "message");
-				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-				    C20_DIF_DLT, ediffs[i + j].sl, cols[j].sl,
-				    "message");
-				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-				    C20_DIF_DLT, ediffs[i + j].sc, cols[j].sc,
-				    "message");
-				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-				    C20_DIF_DLT, ediffs[i + j].sh, cols[j].sh,
-				    "message");
-				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-				    C20_DIF_DLT, ediffs[i + j].rt, cols[j].rt,
-				    "message");
-				TEST_ASSERT_DOUBLE_WITHIN_MESSAGE(
-				    C20_DIF_DLT, ediffs[i + j].e2000,
-				    cols[j].e2000, "message");
-			}
-		}
+		const char *tmp_msg = "Pair %d %s off by %f";
+		char	    act_msg[256];
+
+		sprintf(act_msg, tmp_msg, i, "avghp",
+			fabs(e2000_diffs_calc[i].avghp -
+			     e2000_diffs_scanned[i].avghp));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].avghp,
+		    e2000_diffs_calc[i].avghp, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "g",
+			fabs(e2000_diffs_calc[i].g -
+			     e2000_diffs_scanned[i].g));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].g,
+		    e2000_diffs_calc[i].g, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "t",
+			fabs(e2000_diffs_calc[i].t -
+			     e2000_diffs_scanned[i].t));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].t,
+		    e2000_diffs_calc[i].t, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "sl",
+			fabs(e2000_diffs_calc[i].sl -
+			     e2000_diffs_scanned[i].sl));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].sl,
+		    e2000_diffs_calc[i].sl, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "sc",
+			fabs(e2000_diffs_calc[i].sc -
+			     e2000_diffs_scanned[i].sc));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].sc,
+		    e2000_diffs_calc[i].sc, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "sh",
+			fabs(e2000_diffs_calc[i].sh -
+			     e2000_diffs_scanned[i].sh));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].sh,
+		    e2000_diffs_calc[i].sh, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "rt",
+			fabs(e2000_diffs_calc[i].rt -
+			     e2000_diffs_scanned[i].rt));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].rt,
+		    e2000_diffs_calc[i].rt, act_msg);
+
+		sprintf(act_msg, tmp_msg, i, "diff",
+			fabs(e2000_diffs_calc[i].diff -
+			     e2000_diffs_scanned[i].diff));
+		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
+		    E2000_DELTA, e2000_diffs_scanned[i].diff,
+		    e2000_diffs_calc[i].diff, act_msg);
 	}
 }

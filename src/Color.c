@@ -4,10 +4,15 @@
 
 #include "Color.h"
 
+#ifdef PALETTE_DEBUG
+#include "test_shared.h"
+#endif
+
 #define COLOR_SPACE_BIT(space) (1u << (space))
-#define square(x) ((x) * (x))
-#define DEG2RAD(x) (((x) / (180.0)) * (M_PI))
-#define RAD2DEG(x) (((x) / M_PI) * (180.0))
+#define SQUARE(x) ((x) * (x))
+#define SECOND_SURSOLID(x) ((x) * (x) * (x) * (x) * (x) * (x) * (x))
+#define DEG2RAD(x) (((x) / (180.0f)) * (M_PI))
+#define RAD2DEG(x) (((x) / M_PI) * (180.0f))
 
 /* TODO (Tess): Remove any unnecessary indirections */
 
@@ -18,39 +23,45 @@ static const double Z2	  = 1.08883;
 static const double DELTA = (6.0 / 29.0) * (6.0 / 29.0) * (6.0 / 29.0);
 #ifndef M_PI
 static const double M_PI = 3.14159265358979323846;
+extern E2000_diff   e2000_diffs_calc[NUM_E2000_PAIR]
 #endif
 
-/* Mark/check the validity of colors */
-static inline void Color_mark_space(struct Color   *color,
-				    enum ColorSpace space) {
+    /* Mark/check the validity of colors */
+    static inline void
+    Color_mark_space(struct Color *color, enum ColorSpace space) {
 	color->valid_spaces |= COLOR_SPACE_BIT(space);
 }
 
-static inline int Color_has_space(const struct Color color,
-				  enum ColorSpace    space) {
-	return (color.valid_spaces & COLOR_SPACE_BIT(space)) != 0;
+#ifdef PALETTE_DEBUG
+int Color_has_space(const struct Color *color, enum ColorSpace space) {
+#else
+static inline int Color_has_space(const struct Color *color,
+				  enum ColorSpace     space) {
+#endif
+	return (color->valid_spaces & COLOR_SPACE_BIT(space)) != 0;
 }
 
-static inline double linearize(double channel) {
-	return (channel > 0.04045) ? pow((channel + 0.055) / 1.055, 2.4)
-				   : channel / 12.92;
+static inline float linearize(float channel) {
+	return (channel > 0.04045f) ? powf((channel + 0.055f) / 1.055f, 2.4f)
+				    : channel / 12.92f;
 }
 
-static inline double delinearize(double channel) {
-	return (channel > 0.0031308) ? 1.055 * pow(channel, 1.0 / 2.4) - 0.055
-				     : 12.92 * channel;
+static inline float delinearize(float channel) {
+	return (channel > 0.0031308f)
+		   ? 1.055f * powf(channel, 1.0f / 2.4f) - 0.055f
+		   : 12.92f * channel;
 }
 
-struct Color Color_create(const double r, const double g, const double b) {
+struct Color Color_create(const float r, const float g, const float b) {
 	struct Color color = {0};
-	color.srgb.r	   = linearize(r / 255.0);
-	color.srgb.g	   = linearize(g / 255.0);
-	color.srgb.b	   = linearize(b / 255.0);
+	color.srgb.r	   = linearize(r / 255.0f);
+	color.srgb.g	   = linearize(g / 255.0f);
+	color.srgb.b	   = linearize(b / 255.0f);
 	Color_mark_space(&color, COLOR_SRGB);
 	return color;
 }
 
-struct Color Color_create_norm(const double r, const double g, const double b) {
+struct Color Color_create_norm(const float r, const float g, const float b) {
 	struct Color color;
 	color.srgb.r	   = linearize(r);
 	color.srgb.g	   = linearize(g);
@@ -99,9 +110,9 @@ static void convert_srgb_to_oklab(struct Color *color) {
 	    fma(0.0883024619, srgb.r,
 		fma(0.2817188376, srgb.g, fma(0.6299787005, srgb.b, 0.0)));
 
-	l = cbrt(l);
-	m = cbrt(m);
-	s = cbrt(s);
+	l = cbrtf(l);
+	m = cbrtf(m);
+	s = cbrtf(s);
 
 	color->oklab.l = fma(0.2104542553, l,
 			     fma(0.7936177850, m, fma(-0.0040720468, s, 0.0)));
@@ -112,7 +123,6 @@ static void convert_srgb_to_oklab(struct Color *color) {
 
 	Color_mark_space(color, COLOR_OKLAB);
 }
-
 #ifdef PALETTE_DEBUG
 void convert_srgb_to_grayscale(struct Color *color) {
 #else
@@ -120,7 +130,7 @@ static inline void convert_srgb_to_grayscale(struct Color *color) {
 #endif
 	struct sRGB srgb = color->srgb;
 
-	double l =
+	float l =
 	    fma(0.2126, srgb.r, fma(0.7152, srgb.g, fma(0.0722, srgb.b, 0)));
 
 	color->grayscale.l = l;
@@ -128,22 +138,22 @@ static inline void convert_srgb_to_grayscale(struct Color *color) {
 }
 
 /* Color difference functions begin here */
-static inline double delta_ok_diff_fast(const struct okLAB *sam,
-					const struct okLAB *ref) {
-	return sqrt((sam->l - ref->l) * (sam->l - ref->l) +
-		    (sam->a - ref->a) * (sam->a - ref->a) +
-		    (sam->b - ref->b) * (sam->b - ref->b));
+static inline float delta_ok_diff_fast(const struct okLAB *sam,
+				       const struct okLAB *ref) {
+	return sqrtf((sam->l - ref->l) * (sam->l - ref->l) +
+		     (sam->a - ref->a) * (sam->a - ref->a) +
+		     (sam->b - ref->b) * (sam->b - ref->b));
 }
 
-static inline double delta_cie76_diff_fast(const struct cieLAB *sam,
-					   const struct cieLAB *ref) {
-	return sqrt(fma(sam->l - ref->l, sam->l - ref->l,
-			fma(sam->a - ref->a, sam->a - ref->a,
-			    fma(sam->b - ref->b, sam->b - ref->b, 0))));
+static inline float delta_cie76_diff_fast(const struct cieLAB *sam,
+					  const struct cieLAB *ref) {
+	return sqrtf(fmaf(sam->l - ref->l, sam->l - ref->l,
+			  fmaf(sam->a - ref->a, sam->a - ref->a,
+			       fmaf(sam->b - ref->b, sam->b - ref->b, 0))));
 }
 
-static inline double delta_cie94_diff_fast(const struct cieLAB *sam,
-					   const struct cieLAB *ref) {
+static inline float delta_cie94_diff_fast(const struct cieLAB *sam,
+					  const struct cieLAB *ref) {
 	const double K1 = 0.045;
 	const double K2 = 0.015;
 
@@ -151,11 +161,11 @@ static inline double delta_cie94_diff_fast(const struct cieLAB *sam,
 	const double da = sam->a - ref->a;
 	const double db = sam->b - ref->b;
 
-	const double C1 = sqrt(square(sam->a) + square(sam->b));
-	const double C2 = sqrt(square(ref->a) + square(ref->b));
+	const double C1 = sqrt(SQUARE(sam->a) + SQUARE(sam->b));
+	const double C2 = sqrt(SQUARE(ref->a) + SQUARE(ref->b));
 	const double dC = C1 - C2;
 
-	const double dH2 = square(da) + square(db) - square(dC);
+	const double dH2 = SQUARE(da) + SQUARE(db) - SQUARE(dC);
 
 	const double sl = 1.0;
 	const double sc = fma(K1, C1, 1.0);
@@ -163,46 +173,46 @@ static inline double delta_cie94_diff_fast(const struct cieLAB *sam,
 
 	const double term_L = dl / sl;
 	const double term_C = dC / sc;
-	const double term_H = sqrt(dH2) / sh;
+	const double term_H = sqrt(dH2 < 0.0 ? 0.0 : dH2) / sh;
 
-	return sqrt(fma(term_L, term_L, fma(term_C, term_C, term_H * term_H)));
+	return sqrt(SQUARE(term_L) + SQUARE(term_C) + SQUARE(term_H));
 }
 
-/* #ifdef PALETTE_DEBUG */
-
-/* #endif */
-
-/* Expose this function globally for testing if debugging */
 #ifdef PALETTE_DEBUG
-double delta_ciede2000_diff_fast(struct cieLAB_test *sam,
-				 struct cieLAB_test *ref) {
+float delta_ciede2000_diff_fast(E2000_diff *diff) {
 #else
-static inline double delta_ciede2000_diff_fast(const struct cieLAB *sam,
-					       const struct cieLAB *ref) {
+static inline float delta_ciede2000_diff_fast(const struct cieLAB *sam,
+					      const struct cieLAB *ref) {
 #endif
+
 	const double kl = 1;
 	const double kh = 1;
 	const double kc = 1;
-	double	     l1 = sam->l, a1 = sam->a, b1 = sam->b;
-	double	     l2 = ref->l, a2 = ref->a, b2 = ref->b;
+#ifdef PALETTE_DEBUG
+	double l1 = diff->l[0], a1 = diff->a[0], b1 = diff->b[0];
+	double l2 = diff->l[1], a2 = diff->a[1], b2 = diff->b[1];
+#else
+	double l1 = sam->l, a1 = sam->a, b1 = sam->b;
+	double l2 = ref->l, a2 = ref->a, b2 = ref->b;
+#endif
 
 	/* Step 1 */
-	double c1 = sqrt(square(a1) + square(b1));
-	double c2 = sqrt(square(a2) + square(b2));
+	double c1 = sqrtf(SQUARE(a1) + SQUARE(b1));
+	double c2 = sqrtf(SQUARE(a2) + SQUARE(b2));
 
 	double avgc = (c1 + c2) / 2.0;
-	/* Saves a second call to pow */
-	double avgc7 = pow(avgc, 7.0);
 	/* Saves calculating this twice */
-	double g   = 0.5 * (1.0 - sqrt(avgc7 / (avgc7 + 6103515625.0)));
+	double g =
+	    0.5f * (1.0f - sqrtf(SECOND_SURSOLID(avgc) /
+				 (SECOND_SURSOLID(avgc) + 6103515625.0)));
 	double a1p = (1.0 + g) * a1;
 	double a2p = (1.0 + g) * a2;
-	double c1p = sqrt(square(a1p) + square(b1));
-	double c2p = sqrt(square(a2p) + square(b2));
+	double c1p = sqrt(SQUARE(a1p) + SQUARE(b1));
+	double c2p = sqrt(SQUARE(a2p) + SQUARE(b2));
 	double h1p = (b1 == 0.0 && a1p == 0.0)
 			 ? 0
 			 : fmod(RAD2DEG(atan2(b1, a1p)) + 360.0, 360.0);
-	double h2p = (b2 == 0.0 && a2p == 0.0)
+	double h2p = (b2 == 0.0f && a2p == 0.0f)
 			 ? 0
 			 : fmod(RAD2DEG(atan2(b2, a2p)) + 360.0, 360.0);
 
@@ -212,7 +222,7 @@ static inline double delta_ciede2000_diff_fast(const struct cieLAB *sam,
 
 	double dhp;
 	if (c1p == 0.0 || c2p == 0.0) {
-		dhp = 0.0;
+		dhp = 0.0f;
 	} else {
 		if (fabs(h2p - h1p) <= 180.0) {
 			dhp = h2p - h1p;
@@ -221,7 +231,6 @@ static inline double delta_ciede2000_diff_fast(const struct cieLAB *sam,
 		} else if (h2p - h1p < -180.0) {
 			dhp = h2p - h1p + 360.0;
 		} else {
-			printf("You done fucked up, A-A-ron\n");
 			return 0.0;
 		}
 	}
@@ -252,11 +261,11 @@ static inline double delta_ciede2000_diff_fast(const struct cieLAB *sam,
 		   0.24 * cos(DEG2RAD(2.0 * avghp)) +
 		   0.32 * cos(DEG2RAD(3.0 * avghp + 6.0)) -
 		   0.20 * cos(DEG2RAD(4.0 * avghp - 63.0));
-	double dtheta = 30.0 * exp(-(square((avghp - 275.0) / 25.0)));
-	double avgcp7 = pow(avgcp, 7.0);
-	double rc     = 2.0 * sqrt((avgcp7) / (avgcp7 + 6103515625.0));
-	double sl     = 1.0 + ((0.015 * (square(avglp - 50.0))) /
-			       sqrt(20.0 + (square(avglp - 50.0))));
+	double dtheta = 30.0 * exp(-(SQUARE((avghp - 275.0) / 25.0)));
+	double rc     = 2.0 * sqrt(SECOND_SURSOLID(avgcp) /
+				   (SECOND_SURSOLID(avgcp) + 6103515625.0f));
+	double sl     = 1.0 + ((0.015 * (SQUARE(avglp - 50.0))) /
+			       sqrt(20.0 + (SQUARE(avglp - 50.0))));
 	double sc     = 1.0 + 0.045 * avgcp;
 	double sh     = 1.0 + 0.015 * avgcp * t;
 	double rt     = -sin(DEG2RAD(2.0 * dtheta)) * rc;
@@ -264,86 +273,76 @@ static inline double delta_ciede2000_diff_fast(const struct cieLAB *sam,
 	double termc  = dcp / (kc * sc);
 	double termh  = dHp / (kh * sh);
 
+	double ret = sqrt(SQUARE(terml) + SQUARE(termc) + SQUARE(termh) +
+			  rt * termc * termh);
 #ifdef PALETTE_DEBUG
-	sam->ap = a1p;
-	ref->ap = a2p;
-	sam->cp = c1p;
-	ref->cp = c2p;
-	sam->hp = h1p;
-	ref->hp = h2p;
+	diff->ap[0] = a1p;
+	diff->ap[1] = a2p;
+	diff->cp[0] = c1p;
+	diff->cp[1] = c2p;
+	diff->hp[0] = h1p;
+	diff->hp[1] = h2p;
 
-	sam->avghp = avghp;
-	ref->avghp = avghp;
-	sam->g	   = g;
-	ref->g	   = g;
-	sam->t	   = t;
-	ref->t	   = t;
-	sam->sl	   = sl;
-	ref->sl	   = sl;
-	sam->sc	   = sc;
-	ref->sc	   = sc;
-	sam->sh	   = sh;
-	ref->sh	   = sh;
-	sam->rt	   = rt;
-	ref->rt	   = rt;
-	sam->e2000 = sqrt(square(terml) + square(termc) + square(termh) +
-			  rt * termc * termh);
-	ref->e2000 = sqrt(square(terml) + square(termc) + square(termh) +
-			  rt * termc * termh);
+	diff->avghp = avghp;
+	diff->g = g;
+	diff->t = t;
+	diff->sl = sl;
+	diff->sc = sc;
+	diff->sh = sh;
+	diff->rt = rt;
+	diff->diff = ret;
 #endif
-	return sqrt(square(terml) + square(termc) + square(termh) +
-		    rt * termc * termh);
+
+	return ret;
 }
 
-double delta_ok_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(*sam, COLOR_OKLAB)) {
+float delta_ok_diff(struct Color *sam, struct Color *ref) {
+	if (!Color_has_space(sam, COLOR_OKLAB)) {
 		convert_srgb_to_oklab(sam);
 	}
-	if (!Color_has_space(*ref, COLOR_OKLAB)) {
+	if (!Color_has_space(ref, COLOR_OKLAB)) {
 		convert_srgb_to_oklab(ref);
 	}
 	return delta_ok_diff_fast(&sam->oklab, &ref->oklab);
 }
 
-double delta_cie76_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(*sam, COLOR_CIELAB)) {
+float delta_cie76_diff(struct Color *sam, struct Color *ref) {
+	if (!Color_has_space(sam, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(sam);
 	}
-	if (!Color_has_space(*ref, COLOR_CIELAB)) {
+	if (!Color_has_space(ref, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(ref);
 	}
 	return delta_cie76_diff_fast(&sam->cielab, &ref->cielab);
 }
 
-double delta_cie94_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(*sam, COLOR_CIELAB)) {
+float delta_cie94_diff(struct Color *sam, struct Color *ref) {
+	if (!Color_has_space(sam, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(sam);
 	}
-	if (!Color_has_space(*ref, COLOR_CIELAB)) {
+	if (!Color_has_space(ref, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(ref);
 	}
 
 	return delta_cie94_diff_fast(&sam->cielab, &ref->cielab);
 }
 
-double delta_ciede2000_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(*sam, COLOR_CIELAB)) {
+float delta_ciede2000_diff(struct Color *sam, struct Color *ref) {
+	if (!Color_has_space(sam, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(sam);
 	}
-	if (!Color_has_space(*ref, COLOR_CIELAB)) {
+	if (!Color_has_space(ref, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(ref);
 	}
 #ifdef PALETTE_DEBUG
-	struct cieLAB_test sam_t;
-	struct cieLAB_test ref_t;
-	sam_t.l = sam->cielab.l;
-	sam_t.a = sam->cielab.a;
-	sam_t.b = sam->cielab.b;
-
-	ref_t.l = ref->cielab.l;
-	ref_t.a = ref->cielab.a;
-	ref_t.b = ref->cielab.b;
-	return delta_ciede2000_diff_fast(&sam_t, &ref_t);
+	struct E2000_diff diff;
+	diff.l[0] = sam->cielab.l;
+	diff.a[0] = sam->cielab.a;
+	diff.b[0] = sam->cielab.b;
+	diff.l[1] = ref->cielab.l;
+	diff.a[1] = ref->cielab.a;
+	diff.b[1] = ref->cielab.b;
+	return delta_ciede2000_diff_fast(&diff);
 #else
 	return delta_ciede2000_diff_fast(&sam->cielab, &ref->cielab);
 #endif
@@ -354,3 +353,24 @@ void Color_calc_spaces(struct Color *color) {
 	convert_srgb_to_cielab(color);
 	convert_srgb_to_grayscale(color);
 }
+
+#ifdef PALETTE_DEBUG
+void Color_print(struct Color *color) {
+	printf("Linear sRGB: (%f, %f, %f)\n", color->srgb.r, color->srgb.g,
+	       color->srgb.b);
+	if (!Color_has_space(color, COLOR_OKLAB)) {
+		convert_srgb_to_oklab(color);
+	}
+	printf("okLAB: (%f, %f, %f)\n", color->oklab.l, color->oklab.a,
+	       color->oklab.b);
+	if (!Color_has_space(color, COLOR_CIELAB)) {
+		convert_srgb_to_cielab(color);
+	}
+	printf("cieLAB: (%f, %f, %f)\n", color->cielab.l, color->cielab.a,
+	       color->cielab.b);
+	if (!Color_has_space(color, COLOR_GRAY)) {
+		convert_srgb_to_grayscale(color);
+	}
+	printf("Grayscale: %f\n", color->grayscale.l);
+}
+#endif

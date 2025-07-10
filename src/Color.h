@@ -5,35 +5,25 @@
 
 enum ColorSpace { COLOR_SRGB, COLOR_OKLAB, COLOR_CIELAB, COLOR_GRAY };
 
+typedef struct E2000_diff E200_diff;
+
 /* Supported color spaces */
 struct okLAB {
-	double l, a, b;
+	float l, a, b;
 };
 
 /* Stored linear and normalized */
 struct sRGB {
-	double r, g, b;
+	float r, g, b;
 };
 
 struct cieLAB {
-	double l, a, b;
+	float l, a, b;
 };
 
 struct Grayscale {
-	double l;
+	float l;
 };
-
-#ifdef PALETTE_DEBUG
-struct cieLAB_test {
-  double l, a, b;
-  double ap, cp, hp;
-  double avghp;
-  double g, t;
-  double sl, sc, sh;
-  double rt;
-  double e2000;
-};
-#endif
 
 struct Color {
 	struct okLAB	 oklab;
@@ -43,26 +33,27 @@ struct Color {
 	uint8_t		 valid_spaces;
 };
 
-/* Must be constructed with rgb for now */
-struct Color Color_create(const double r, const double g, const double b);
+#ifdef PALETTE_DEBUG
+void  Color_print(struct Color *color);
+int   Color_has_space(const struct Color *color, enum ColorSpace space);
+void  convert_srgb_to_grayscale(struct Color *color);
+float delta_ciede2000_diff_fast(struct E2000_diff *diff);
+#endif
 
-struct Color Color_create_norm(const double r, const double g, const double b);
+/* Must be constructed with rgb for now */
+struct Color Color_create(const float r, const float g, const float b);
+
+struct Color Color_create_norm(const float r, const float g, const float b);
 
 /* Calculates all spaces. Used for testing */
 void Color_calc_spaces(struct Color *color);
 
-#ifdef PALETTE_DEBUG
-double delta_ciede2000_diff_fast(struct cieLAB_test *sam,
-				 struct cieLAB_test *ref);
-void convert_srgb_to_grayscale(struct Color *color);
-#endif
-
 /* Euclidean oklab diff. ~35 cycles */
-double delta_ok_diff(struct Color *sam, struct Color *ref);
+float delta_ok_diff(struct Color *sam, struct Color *ref);
 /* Euclidean cielab diff. ~45 cycles */
-double delta_cie76_diff(struct Color *sam, struct Color *ref);
+float delta_cie76_diff(struct Color *sam, struct Color *ref);
 /* https://en.wikipedia.org/wiki/Color_difference#CIE94 ~100 cycles */
-double delta_cie94_diff(struct Color *sam, struct Color *ref);
+float delta_cie94_diff(struct Color *sam, struct Color *ref);
 /* https://en.wikipedia.org/wiki/Color_difference#CIEDE2000 ~450 cycles */
-double delta_ciede2000_diff(struct Color *sam, struct Color *ref);
+float delta_ciede2000_diff(struct Color *sam, struct Color *ref);
 #endif
