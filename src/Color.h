@@ -23,7 +23,6 @@ struct Grayscale {
 	float l;
 };
 
-
 struct Color {
 	struct okLAB	 oklab;
 	struct cieLAB	 cielab;
@@ -32,6 +31,12 @@ struct Color {
 	uint8_t		 valid_spaces;
 };
 
+#ifdef PALETTE_DEBUG
+void Color_print(struct Color *color);
+int  Color_has_space(const struct Color *color, enum ColorSpace space);
+void convert_srgb_to_grayscale(struct Color *color);
+#endif
+
 /* Must be constructed with rgb for now */
 struct Color Color_create(const float r, const float g, const float b);
 
@@ -39,7 +44,6 @@ struct Color Color_create_norm(const float r, const float g, const float b);
 
 /* Calculates all spaces. Used for testing */
 void Color_calc_spaces(struct Color *color);
-
 
 /* Euclidean oklab diff. ~35 cycles */
 float delta_ok_diff(struct Color *sam, struct Color *ref);

@@ -11,6 +11,12 @@
 #define MAX_LINE 512
 #define MAX_FIELDS 64
 
+struct Color	 colors[NUM_REF_COL];
+struct sRGB	 linears[NUM_REF_COL];
+struct cieLAB	 cielabs[NUM_REF_COL];
+struct okLAB	 oklabs[NUM_REF_COL];
+struct Grayscale grayscales[NUM_REF_COL];
+
 static inline bool parse_ref(const char *filename, struct Color *colors,
 			     struct sRGB *linears, struct cieLAB *cielabs,
 			     struct okLAB     *oklabs,
@@ -29,15 +35,31 @@ static inline bool parse_ref(const char *filename, struct Color *colors,
 			fprintf(stderr, "Unable to parse %s\n", filename);
 			return false;
 		}
-		int index     = atoi(fields[INDEX]);
+		int index = atoi(fields[INDEX]);
+
 		colors[index] = Color_create_norm(strtof(fields[SRGBR], NULL),
 						  strtof(fields[SRGBG], NULL),
 						  strtof(fields[SRGBB], NULL));
+		linears[index].r = strtof(fields[LINR], NULL);
+		linears[index].g = strtof(fields[LING], NULL);
+		linears[index].b = strtof(fields[LINB], NULL);
+
+		cielabs[index].l = strtof(fields[LABL], NULL);
+		cielabs[index].a = strtof(fields[LABA], NULL);
+		cielabs[index].b = strtof(fields[LABB], NULL);
+
+		oklabs[index].l = strtof(fields[OKL], NULL);
+		oklabs[index].a = strtof(fields[OKA], NULL);
+		oklabs[index].b = strtof(fields[OKB], NULL);
+
+		grayscales[index].l = strtof(fields[GRAY], NULL);
 	}
 	return true;
 }
 
 void setUp(void) {
+	parse_ref("sharma_reference_colors.csv", colors, linears, cielabs,
+		  oklabs, grayscales);
 }
 
 void tearDown(void) {
@@ -60,7 +82,7 @@ int main(void) {
 	RUN_TEST(test_queue_push);
 	RUN_TEST(test_queue_pop);
 	RUN_TEST(test_queue_counters);
-	/* RUN_TEST(test_color_check_flags); */
+	RUN_TEST(test_color_check_flags);
 	/* RUN_TEST(test_color_create); */
 	/* RUN_TEST(test_cie76_diff); */
 	/* RUN_TEST(test_cie94_diff); */

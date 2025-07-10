@@ -13,12 +13,12 @@
 /* TODO (Tess): Remove any unnecessary indirections */
 
 /* Constants for a standard D65/2 illuminant */
-static const double X2	  = 0.95047f;
-static const double Y2	  = 1.000f;
-static const double Z2	  = 1.08883f;
-static const double DELTA = (6.0f / 29.0f) * (6.0f / 29.0f) * (6.0f / 29.0f);
+static const double X2	  = 0.95047;
+static const double Y2	  = 1.000;
+static const double Z2	  = 1.08883;
+static const double DELTA = (6.0 / 29.0) * (6.0 / 29.0) * (6.0 / 29.0);
 #ifndef M_PI
-static const double M_PI = 3.14159265358979323846f;
+static const double M_PI = 3.14159265358979323846;
 #endif
 
 /* Mark/check the validity of colors */
@@ -27,9 +27,13 @@ static inline void Color_mark_space(struct Color   *color,
 	color->valid_spaces |= COLOR_SPACE_BIT(space);
 }
 
-static inline int Color_has_space(const struct Color color,
-				  enum ColorSpace    space) {
-	return (color.valid_spaces & COLOR_SPACE_BIT(space)) != 0;
+#ifdef PALETTE_DEBUG
+int Color_has_space(const struct Color *color, enum ColorSpace space) {
+#else
+static inline int Color_has_space(const struct Color *color,
+				  enum ColorSpace     space) {
+#endif
+	return (color->valid_spaces & COLOR_SPACE_BIT(space)) != 0;
 }
 
 static inline float linearize(float channel) {
@@ -113,10 +117,12 @@ static void convert_srgb_to_oklab(struct Color *color) {
 			     fma(0.7827717662, m, fma(-0.8086757660, s, 0.0)));
 
 	Color_mark_space(color, COLOR_OKLAB);
-	x
 }
-
+#ifdef PALETTE_DEBUG
+void convert_srgb_to_grayscale(struct Color *color) {
+#else
 static inline void convert_srgb_to_grayscale(struct Color *color) {
+#endif
 	struct sRGB srgb = color->srgb;
 
 	float l =
@@ -259,30 +265,30 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB *sam,
 }
 
 float delta_ok_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(*sam, COLOR_OKLAB)) {
+	if (!Color_has_space(sam, COLOR_OKLAB)) {
 		convert_srgb_to_oklab(sam);
 	}
-	if (!Color_has_space(*ref, COLOR_OKLAB)) {
+	if (!Color_has_space(ref, COLOR_OKLAB)) {
 		convert_srgb_to_oklab(ref);
 	}
 	return delta_ok_diff_fast(&sam->oklab, &ref->oklab);
 }
 
 float delta_cie76_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(*sam, COLOR_CIELAB)) {
+	if (!Color_has_space(sam, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(sam);
 	}
-	if (!Color_has_space(*ref, COLOR_CIELAB)) {
+	if (!Color_has_space(ref, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(ref);
 	}
 	return delta_cie76_diff_fast(&sam->cielab, &ref->cielab);
 }
 
 float delta_cie94_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(*sam, COLOR_CIELAB)) {
+	if (!Color_has_space(sam, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(sam);
 	}
-	if (!Color_has_space(*ref, COLOR_CIELAB)) {
+	if (!Color_has_space(ref, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(ref);
 	}
 
@@ -290,10 +296,10 @@ float delta_cie94_diff(struct Color *sam, struct Color *ref) {
 }
 
 float delta_ciede2000_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(*sam, COLOR_CIELAB)) {
+	if (!Color_has_space(sam, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(sam);
 	}
-	if (!Color_has_space(*ref, COLOR_CIELAB)) {
+	if (!Color_has_space(ref, COLOR_CIELAB)) {
 		convert_srgb_to_cielab(ref);
 	}
 	return delta_ciede2000_diff_fast(&sam->cielab, &ref->cielab);
@@ -304,3 +310,24 @@ void Color_calc_spaces(struct Color *color) {
 	convert_srgb_to_cielab(color);
 	convert_srgb_to_grayscale(color);
 }
+
+#ifdef PALETTE_DEBUG
+void Color_print(struct Color *color) {
+	printf("Linear sRGB: (%f, %f, %f)\n", color->srgb.r, color->srgb.g,
+	       color->srgb.b);
+	if (!Color_has_space(color, COLOR_OKLAB)) {
+		convert_srgb_to_oklab(color);
+	}
+	printf("okLAB: (%f, %f, %f)\n", color->oklab.l, color->oklab.a,
+	       color->oklab.b);
+	if (!Color_has_space(color, COLOR_CIELAB)) {
+		convert_srgb_to_cielab(color);
+	}
+	printf("cieLAB: (%f, %f, %f)\n", color->cielab.l, color->cielab.a,
+	       color->cielab.b);
+	if (!Color_has_space(color, COLOR_GRAY)) {
+		convert_srgb_to_grayscale(color);
+	}
+	printf("Grayscale: %f\n", color->grayscale.l);
+}
+#endif
