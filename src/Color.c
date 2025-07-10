@@ -91,38 +91,36 @@ static void convert_srgb_to_cielab(struct Color *color) {
 static void convert_srgb_to_oklab(struct Color *color) {
 	const struct sRGB srgb = color->srgb;
 
-	float l = fmaf(
-	    0.4122214708f, srgb.r,
-	    fmaf(0.5363325363f, srgb.g, fmaf(0.0514459929f, srgb.b, 0.0f)));
-	float m = fmaf(
-	    0.2119034982f, srgb.r,
-	    fmaf(0.6806995451f, srgb.g, fmaf(0.1073969566f, srgb.b, 0.0f)));
-	float s = fmaf(
-	    0.0883024619f, srgb.r,
-	    fmaf(0.2817188376f, srgb.g, fmaf(0.6299787005f, srgb.b, 0.0f)));
+	double l =
+	    fma(0.4122214708, srgb.r,
+		fma(0.5363325363, srgb.g, fma(0.0514459929, srgb.b, 0.0)));
+	double m =
+	    fma(0.2119034982, srgb.r,
+		fma(0.6806995451, srgb.g, fma(0.1073969566, srgb.b, 0.0)));
+	double s =
+	    fma(0.0883024619, srgb.r,
+		fma(0.2817188376, srgb.g, fma(0.6299787005, srgb.b, 0.0)));
 
 	l = cbrtf(l);
 	m = cbrtf(m);
 	s = cbrtf(s);
 
-	color->oklab.l =
-	    fmaf(0.2104542553f, l,
-		 fmaf(0.7936177850f, m, fmaf(-0.0040720468f, s, 0.0f)));
-	color->oklab.a =
-	    fmaf(1.9779984951f, l,
-		 fmaf(-2.4285922050f, m, fmaf(0.4505937099f, s, 0.0f)));
-	color->oklab.b =
-	    fmaf(0.0259040371f, l,
-		 fmaf(0.7827717662f, m, fmaf(-0.8086757660f, s, 0.0f)));
+	color->oklab.l = fma(0.2104542553, l,
+			     fma(0.7936177850, m, fma(-0.0040720468, s, 0.0)));
+	color->oklab.a = fma(1.9779984951, l,
+			     fma(-2.4285922050, m, fma(0.4505937099, s, 0.0)));
+	color->oklab.b = fma(0.0259040371, l,
+			     fma(0.7827717662, m, fma(-0.8086757660, s, 0.0)));
 
 	Color_mark_space(color, COLOR_OKLAB);
+	x
 }
 
 static inline void convert_srgb_to_grayscale(struct Color *color) {
 	struct sRGB srgb = color->srgb;
 
-	float l = fmaf(0.2126f, srgb.r,
-		       fmaf(0.7152f, srgb.g, fmaf(0.0722f, srgb.b, 0)));
+	float l =
+	    fma(0.2126, srgb.r, fma(0.7152, srgb.g, fma(0.0722, srgb.b, 0)));
 
 	color->grayscale.l = l;
 	Color_mark_space(color, COLOR_GRAY);
