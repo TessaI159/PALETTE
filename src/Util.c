@@ -4,7 +4,7 @@
 #include "Color.h"
 #include "Util.h"
 
-uint64_t time_diff(double (*func)(Color *, Color *), struct Color col1,
+uint64_t time_diff(float (*func)(Color *, Color *), struct Color col1,
 		   struct Color col2, const uint64_t RUNS) {
 	/* Warm the function up */
 	for (int i = 0; i < 1000; ++i) {
