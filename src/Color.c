@@ -68,6 +68,15 @@ struct Color Color_create_lab(const float l, const float a, const float b) {
 	return color;
 }
 
+struct Color Color_create_ok(const float l, const float a, const float b) {
+	struct Color color;
+	color.data.oklab.l  = l;
+	color.data.cielab.a = a;
+	color.data.cielab.b = b;
+	color.current_space = COLOR_CIELAB;
+	return color;
+}
+
 static inline void convert_cielab_to_srgb(struct Color *color) {
 	const struct cieLAB lab = color->data.cielab;
 

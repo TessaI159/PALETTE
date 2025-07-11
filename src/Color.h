@@ -30,6 +30,8 @@ struct Color {
 	} data;
 };
 
+
+/* For debugging purposes only */
 #ifdef PALETTE_DEBUG
 void  Color_print(struct Color *color);
 float delta_ciede2000_diff_fast(struct E2000_diff *diff);
@@ -40,6 +42,7 @@ void  convert_to(struct Color *color, enum ColorSpace t);
 struct Color Color_create(const float r, const float g, const float b);
 struct Color Color_create_norm(const float r, const float g, const float b);
 struct Color Color_create_lab(const float l, const float a, const float b);
+struct Color Color_create_ok(const float l, const float a, const float b);
 
 /* Euclidean oklab diff. ~35 cycles */
 float delta_ok_diff(struct Color *sam, struct Color *ref);
