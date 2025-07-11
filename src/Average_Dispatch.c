@@ -18,8 +18,10 @@ void average_init() {
 }
 
 struct Color lab_avg(const struct Color **colors, uint16_t num_col) {
-	if (!features.initialized) {
+  static bool average_initialized = false;
+	if (!average_initialized) {
 		average_init();
+		average_initialized = true;
 	}
 	return lab_avg_intern(colors, num_col);
 }

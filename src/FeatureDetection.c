@@ -4,26 +4,22 @@
 #include <stdio.h>
 #include <string.h>
 
-#if defined(_WIN32)
-#include <windows.h>
-#elif defined(__linux__) || defined(__unix__) || defined(__posix__)
+/* TODO (Tess): This assumes you're on a *nix system for now. */
+
+#if defined(__linux__) || defined(__unix__) || defined(__posix__)
 #include <dirent.h>
 #include <unistd.h>
 #endif
 
 #if defined(__x86_64__) || defined(_M_X64)
-#include <immintrin.h>
-#if defined(_MSC_VER)
-#include <intrin.h>
-#else
 #include <cpuid.h>
-#endif
+#include <immintrin.h>
 #endif
 
 /* TODO (Tess): In the Linux cache detection, check for errors for each of the
    mini query functions */
 
-/* TODO (Tess): Correctly implement cache detection for non-Linux */
+/* TODO (Tess): Use booleans */
 
 struct system_features_t features = {false, false, false, {0, 0, 0, 0}, 0,
 				     0,	    0,	   false, false};
@@ -120,7 +116,7 @@ static int query_file_gen(const char *path) {
 	FILE *fp;
 	char  buff[64];
 	fp = fopen(path, "r");
-	int level;
+	int level = -1;
 	if (!fp) {
 		printf("Could not open %s\n", path);
 		return -1;
@@ -143,16 +139,17 @@ static void query_cache_sizes(struct system_features_t *features) {
 
 	for (int i = 0; i < dc; ++i) {
 		char path[256];
-		snprintf(path, sizeof(path), "%sindex%d/size", base, i);
+		size_t ps = sizeof(path);
+		snprintf(path, ps, "%sindex%d/size", base, i);
 		int size = query_file_size(path);
-		snprintf(path, sizeof(path), "%sindex%d/shared_cpu_list", base,
+		snprintf(path, ps, "%sindex%d/shared_cpu_list", base,
 			 i);
 		int shared = query_file_shared(path);
-		snprintf(path, sizeof(path), "%sindex%d/type", base, i);
+		snprintf(path, ps, "%sindex%d/type", base, i);
 		int data = query_file_type(path);
-		snprintf(path, sizeof(path), "%sindex%d/level", base, i);
+		snprintf(path, ps, "%sindex%d/level", base, i);
 		int level = query_file_gen(path);
-		snprintf(path, sizeof(path), "%sindex%d/coherency_line_size",
+		snprintf(path, ps, "%sindex%d/coherency_line_size",
 			 base, i);
 		int line = query_file_gen(path);
 
@@ -196,11 +193,7 @@ static void query_cache_sizes(struct system_features_t *features) {
 }
 
 static void query_logical_cores(struct system_features_t *features) {
-#if defined(_WIN32)
-	SYSTEM_INFO sysinfo;
-	GetSystemInfo(&sysinfo);
-	features->logical_cores = sysinfo.dwNumberOfProcessors;
-#elif defined(__linux__) || defined(__unix__) || defined(__posix__)
+#if defined(__linux__) || defined(__unix__) || defined(__posix__)
 	features->logical_cores = sysconf(_SC_NPROCESSORS_ONLN);
 #else
 	features->logical_cores = -1;
@@ -243,32 +236,6 @@ static void query_physical_cores(struct system_features_t *features) {
 	fclose(fp);
 	features->physical_cores =
 	    (cores > 0) ? cores : sysconf(_SC_NPROCESSORS_ONLN);
-#elif defined(_WIN32)
-	DWORD len = 0;
-	GetLogicalProcessorInformationEx(RelationProcessorCore, NULL, &len);
-	SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer =
-	    (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)malloc(len);
-	if (!buffer) {
-		features->physical_cores = -1;
-		return;
-	}
-	if (!GetLogicalProcessorInformationEx(RelationProcessorCore, buffer,
-					      &len)) {
-		free(buffer);
-		features->physical_cores = -1;
-		return;
-	}
-	int   count = 0;
-	char *ptr   = (char *)buffer;
-	while (ptr < (char *)buffer + len) {
-		SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *item =
-		    (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)ptr;
-		if (item->Relationship == RelationProcessorCore)
-			++count;
-		ptr += item->Size;
-	}
-	free(buffer);
-	features->physical_cores = count;
 #else
 	features->physical_cores = -1;
 #endif
@@ -315,7 +282,6 @@ static void query_cpu_features(struct system_features_t *features) {
 }
 
 void query_features(struct system_features_t *features) {
-	memset(features, 0, sizeof(struct system_features_t));
 	query_logical_cores(features);
 	query_physical_cores(features);
 	query_cache_sizes(features);
