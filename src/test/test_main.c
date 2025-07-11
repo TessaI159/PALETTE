@@ -162,7 +162,6 @@ extern void test_cie76_diff(void);
 extern void test_ok_diff(void);
 extern void test_ciede2000_diff(void);
 extern void test_color_check_flags(void);
-extern void speed_test(void);
 
 int main(void) {
 	UNITY_BEGIN();
@@ -176,6 +175,5 @@ int main(void) {
 	RUN_TEST(test_cie94_diff);
 	RUN_TEST(test_ok_diff);
 	RUN_TEST(test_ciede2000_diff);
-	RUN_TEST(speed_test);
 	return UNITY_END();
 }

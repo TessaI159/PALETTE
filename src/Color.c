@@ -68,16 +68,12 @@ struct Color Color_create_lab(const float l, const float a, const float b) {
 	return color;
 }
 
-#ifdef PALETTE_DEBUG
-inline void convert_cielab_to_srgb(struct Color *color) {
-#else
 static inline void convert_cielab_to_srgb(struct Color *color) {
-#endif
 	const struct cieLAB lab = color->data.cielab;
 
-	double fy = (lab.l + 16.0) / 116.0;
-	double fx = fy + (lab.a / 500.0);
-	double fz = fy - (lab.b / 200.0);
+	const double fy = (lab.l + 16.0) / 116.0;
+	const double fx = fy + (lab.a / 500.0);
+	const double fz = fy - (lab.b / 200.0);
 
 	double x = CUBE(fx) > DELTA ? CUBE(fx) : (fx - 16.0 / 116.0) / 7.787;
 	double y =
@@ -97,11 +93,8 @@ static inline void convert_cielab_to_srgb(struct Color *color) {
 
 	color->current_space = COLOR_SRGB;
 }
-#ifdef PALETTE_DEBUG
-inline void convert_oklab_to_srgb(struct Color *color) {
-#else
+
 static inline void convert_oklab_to_srgb(struct Color *color) {
-#endif
 	const double L = color->data.oklab.l;
 	const double A = color->data.oklab.a;
 	const double B = color->data.oklab.b;
@@ -124,11 +117,7 @@ static inline void convert_oklab_to_srgb(struct Color *color) {
 	color->current_space = COLOR_SRGB;
 }
 
-#ifdef PALETTE_DEBUG
-void convert_srgb_to_cielab(struct Color *color) {
-#else
 static void convert_srgb_to_cielab(struct Color *color) {
-#endif
 	const struct sRGB srgb = color->data.srgb;
 
 	const double r = srgb.r;
@@ -193,6 +182,37 @@ static inline void convert_cielab_to_oklab(struct Color *color) {
 static inline void convert_oklab_to_cielab(struct Color *color) {
 	convert_oklab_to_srgb(color);
 	convert_srgb_to_cielab(color);
+}
+
+typedef void (*convert_fn)(struct Color *);
+
+convert_fn conversion_table[COLORSPACE_COUNT][COLORSPACE_COUNT] = {
+    [COLOR_SRGB]   = {[COLOR_SRGB]   = NULL,
+		      [COLOR_CIELAB] = convert_srgb_to_cielab,
+		      [COLOR_OKLAB]  = convert_srgb_to_oklab},
+    [COLOR_CIELAB] = {[COLOR_CIELAB] = NULL,
+		      [COLOR_OKLAB]  = convert_cielab_to_oklab,
+		      [COLOR_SRGB]   = convert_cielab_to_srgb},
+    [COLOR_OKLAB]  = {[COLOR_OKLAB]  = NULL,
+		      [COLOR_SRGB]   = convert_oklab_to_srgb,
+		      [COLOR_CIELAB] = convert_oklab_to_cielab}};
+
+#ifdef PALETTE_DEBUG
+void convert_to(struct Color *color, enum ColorSpace t) {
+#else
+static inline void convert_to(struct Color *color, enum ColorSpace t) {
+#endif
+
+	if (t == color->current_space) {
+		return;
+	}
+
+	convert_fn fn = conversion_table[color->current_space][t];
+	if (fn) {
+		fn(color);
+	} else {
+		printf("Unknown color conversion.\n");
+	}
 }
 
 /* Color difference functions begin here */
@@ -430,29 +450,3 @@ void Color_print(struct Color *color) {
 	}
 }
 #endif
-
-typedef void (*convert_fn)(struct Color *);
-
-convert_fn conversion_table[COLORSPACE_COUNT][COLORSPACE_COUNT] = {
-    [COLOR_SRGB]   = {[COLOR_SRGB]   = NULL,
-		      [COLOR_CIELAB] = convert_srgb_to_cielab,
-		      [COLOR_OKLAB]  = convert_srgb_to_oklab},
-    [COLOR_CIELAB] = {[COLOR_CIELAB] = NULL,
-		      [COLOR_OKLAB]  = convert_cielab_to_oklab,
-		      [COLOR_SRGB]   = convert_cielab_to_srgb},
-    [COLOR_OKLAB]  = {[COLOR_OKLAB]  = NULL,
-		      [COLOR_SRGB]   = convert_oklab_to_srgb,
-		      [COLOR_CIELAB] = convert_oklab_to_cielab}};
-
-void convert_to(struct Color *color, enum ColorSpace t) {
-	if (t == color->current_space) {
-		return;
-	}
-
-	convert_fn fn = conversion_table[color->current_space][t];
-	if (fn) {
-		fn(color);
-	} else {
-		printf("Unknown color conversion.\n");
-	}
-}

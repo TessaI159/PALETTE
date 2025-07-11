@@ -353,15 +353,3 @@ void test_ciede2000_diff(void) {
 	}
 }
 
-void speed_test(void) {
-#ifdef PALETTE_DEBUG
-	srand(0);
-	Color col1 = Color_create(rand() % 255, rand() % 255, rand() % 255);
-	printf("srgb_to_cielab took %lu cycles on average.\n",
-	       time_conv(convert_srgb_to_cielab, col1, RUNS));
-	printf("srgb_to_oklab took %lu cycles on average.\n",
-	       time_conv(convert_srgb_to_oklab, col1, RUNS));
-	printf("cielab_to_srgb took %lu cycles on average.\n",
-	       time_conv(convert_cielab_to_srgb, col1, RUNS));
-#endif
-}

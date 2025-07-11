@@ -33,18 +33,13 @@ struct Color {
 #ifdef PALETTE_DEBUG
 void  Color_print(struct Color *color);
 float delta_ciede2000_diff_fast(struct E2000_diff *diff);
-void  convert_cielab_to_srgb(struct Color *color);
-void  convert_oklab_to_srgb(struct Color *color);
-void  convert_srgb_to_cielab(struct Color *color);
-void  convert_srgb_to_oklab(struct Color *color);
-/* void convert oklab_to_srgb(struct Color *color) */
+void  convert_to(struct Color *color, enum ColorSpace t);
 #endif
 
 /* Must be constructed with rgb for now */
 struct Color Color_create(const float r, const float g, const float b);
 struct Color Color_create_norm(const float r, const float g, const float b);
 struct Color Color_create_lab(const float l, const float a, const float b);
-void convert_to(struct Color *color, enum ColorSpace t);
 
 /* Euclidean oklab diff. ~35 cycles */
 float delta_ok_diff(struct Color *sam, struct Color *ref);
