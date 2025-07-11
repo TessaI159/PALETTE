@@ -19,7 +19,6 @@ static inline void print_refs() {
 		       oklabs[i].b);
 		printf("cieLAB: (%f, %f, %f)\n", cielabs[i].l, cielabs[i].a,
 		       cielabs[i].b);
-		printf("Grayscale: %f\n", grayscales[i].l);
 
 		printf("\n\n");
 	}
@@ -108,79 +107,78 @@ void test_color_check_flags(void) {
 	struct Color test1 = Color_create(124, 191, 171);
 	struct Color test2 = Color_create(255, 193, 204);
 
-	TEST_ASSERT_TRUE(Color_has_space(&test1, COLOR_SRGB));
-	TEST_ASSERT_TRUE(Color_has_space(&test2, COLOR_SRGB));
-
+	TEST_ASSERT_TRUE(test1.current_space == COLOR_SRGB);
+	TEST_ASSERT_TRUE(test2.current_space == COLOR_SRGB);
 	delta_ok_diff(&test1, &test2);
-
-	TEST_ASSERT_TRUE(Color_has_space(&test1, COLOR_OKLAB));
-	TEST_ASSERT_TRUE(Color_has_space(&test2, COLOR_OKLAB));
-
+	TEST_ASSERT_TRUE(test1.current_space == COLOR_OKLAB);
+	TEST_ASSERT_TRUE(test2.current_space == COLOR_OKLAB);
+	delta_cie76_diff(&test1, &test2);
+	TEST_ASSERT_TRUE(test1.current_space == COLOR_CIELAB);
+	TEST_ASSERT_TRUE(test2.current_space == COLOR_CIELAB);
+	delta_cie94_diff(&test1, &test2);
+	TEST_ASSERT_TRUE(test1.current_space == COLOR_CIELAB);
+	TEST_ASSERT_TRUE(test2.current_space == COLOR_CIELAB);
 	delta_ciede2000_diff(&test1, &test2);
-
-	TEST_ASSERT_TRUE(Color_has_space(&test1, COLOR_CIELAB));
-	TEST_ASSERT_TRUE(Color_has_space(&test2, COLOR_CIELAB));
-
-	convert_srgb_to_grayscale(&test1);
-	convert_srgb_to_grayscale(&test2);
-
-	TEST_ASSERT_TRUE(Color_has_space(&test1, COLOR_GRAY));
-	TEST_ASSERT_TRUE(Color_has_space(&test2, COLOR_GRAY));
+	TEST_ASSERT_TRUE(test1.current_space == COLOR_CIELAB);
+	TEST_ASSERT_TRUE(test2.current_space == COLOR_CIELAB);
 }
 
 void test_color_create(void) {
 	for (size_t i = 0; i < NUM_REF_COL; ++i) {
-		Color_calc_spaces(&colors[i]);
 		const char *tmp_msg = "Color %d %s %c off by %f";
 		char	    act_msg[256];
 		/* Linear sRGBs */
 		sprintf(act_msg, tmp_msg, i, "linear srgb", 'r',
-			fabs(linears[i].r - colors[i].srgb.r));
+			fabs(linears[i].r - colors[i].data.srgb.r));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, linears[i].r,
-						 colors[i].srgb.r, act_msg);
+						 colors[i].data.srgb.r,
+						 act_msg);
 		sprintf(act_msg, tmp_msg, i, "linear srgb", 'g',
-			fabs(linears[i].g - colors[i].srgb.g));
+			fabs(linears[i].g - colors[i].data.srgb.g));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, linears[i].g,
-						 colors[i].srgb.g, act_msg);
+						 colors[i].data.srgb.g,
+						 act_msg);
 		sprintf(act_msg, tmp_msg, i, "linear srgb", 'b',
-			fabs(linears[i].b - colors[i].srgb.b));
+			fabs(linears[i].b - colors[i].data.srgb.b));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, linears[i].b,
-						 colors[i].srgb.b, act_msg);
+						 colors[i].data.srgb.b,
+						 act_msg);
 
+		convert_to(&colors[i], COLOR_CIELAB);
 		/* cieLABs */
 		sprintf(act_msg, tmp_msg, i, "cielab", 'l',
-			fabs(cielabs[i].l - colors[i].cielab.l));
+			fabs(cielabs[i].l - colors[i].data.cielab.l));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, cielabs[i].l,
-						 colors[i].cielab.l, act_msg);
+						 colors[i].data.cielab.l,
+						 act_msg);
 		sprintf(act_msg, tmp_msg, i, "cielab", 'a',
-			fabs(cielabs[i].a - colors[i].cielab.a));
+			fabs(cielabs[i].a - colors[i].data.cielab.a));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, cielabs[i].a,
-						 colors[i].cielab.a, act_msg);
+						 colors[i].data.cielab.a,
+						 act_msg);
 		sprintf(act_msg, tmp_msg, i, "cielab", 'b',
-			fabs(cielabs[i].b - colors[i].cielab.b));
+			fabs(cielabs[i].b - colors[i].data.cielab.b));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, cielabs[i].b,
-						 colors[i].cielab.b, act_msg);
+						 colors[i].data.cielab.b,
+						 act_msg);
 
+		convert_to(&colors[i], COLOR_OKLAB);
 		/* okLABs */
 		sprintf(act_msg, tmp_msg, i, "oklab", 'l',
-			fabs(oklabs[i].l - colors[i].oklab.l));
+			fabs(oklabs[i].l - colors[i].data.oklab.l));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, oklabs[i].l,
-						 colors[i].oklab.l, act_msg);
+						 colors[i].data.oklab.l,
+						 act_msg);
 		sprintf(act_msg, tmp_msg, i, "oklab", 'a',
-			fabs(oklabs[i].a - colors[i].oklab.a));
+			fabs(oklabs[i].a - colors[i].data.oklab.a));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, oklabs[i].a,
-						 colors[i].oklab.a, act_msg);
+						 colors[i].data.oklab.a,
+						 act_msg);
 		sprintf(act_msg, tmp_msg, i, "oklab", 'b',
-			fabs(oklabs[i].b - colors[i].oklab.b));
+			fabs(oklabs[i].b - colors[i].data.oklab.b));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(CREATION_DELTA, oklabs[i].b,
-						 colors[i].oklab.b, act_msg);
-
-		/* Grayscale */
-		sprintf(act_msg, tmp_msg, i, "grayscale", 'l',
-			fabs(grayscales[i].l - colors[i].grayscale.l));
-		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
-		    CREATION_DELTA, grayscales[i].l, colors[i].grayscale.l,
-		    act_msg);
+						 colors[i].data.oklab.b,
+						 act_msg);
 	}
 }
 
@@ -359,13 +357,10 @@ void speed_test(void) {
 #ifdef PALETTE_DEBUG
 	srand(0);
 	Color col1 = Color_create(rand() % 255, rand() % 255, rand() % 255);
-	Color_calc_spaces(&col1);
 	printf("srgb_to_cielab took %lu cycles on average.\n",
 	       time_conv(convert_srgb_to_cielab, col1, RUNS));
 	printf("srgb_to_oklab took %lu cycles on average.\n",
 	       time_conv(convert_srgb_to_oklab, col1, RUNS));
-	printf("srgb_to_grayscale took %lu cycles on average.\n",
-	       time_conv(convert_srgb_to_grayscale, col1, RUNS));
 	printf("cielab_to_srgb took %lu cycles on average.\n",
 	       time_conv(convert_cielab_to_srgb, col1, RUNS));
 #endif

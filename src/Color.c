@@ -8,14 +8,12 @@
 #include "test_shared.h"
 #endif
 
-#define COLOR_SPACE_BIT(space) (1u << (space))
+#define COLORSPACE_COUNT 3
 #define SQUARE(x) ((x) * (x))
 #define CUBE(x) ((x) * (x) * (x))
 #define SECOND_SURSOLID(x) ((x) * (x) * (x) * (x) * (x) * (x) * (x))
 #define DEG2RAD(x) (((x) / (180.0)) * (M_PI))
 #define RAD2DEG(x) (((x) / M_PI) * (180.0))
-
-/* TODO (Tess): Remove any unnecessary indirections */
 
 /* Constants for a standard D65/2 illuminant */
 static const double X2	  = 0.95047;
@@ -27,25 +25,11 @@ static const double M_PI = 3.14159265358979323846;
 extern E2000_diff   e2000_diffs_calc[NUM_E2000_PAIR]
 #endif
 
-    /* Mark/check the validity of colors */
-    static inline void
-    Color_mark_space(struct Color *color, enum ColorSpace space) {
-	color->valid_spaces |= COLOR_SPACE_BIT(space);
-}
+    /* TODO (Tess): Allow creation of colors with oklab */
+    /* TODO (Tess): oklab to srgb conversion */
 
-/* TODO (Tess): Allow creation of colors with oklab */
-/* TODO (Tess): oklab to srgb conversion */
-
-#ifdef PALETTE_DEBUG
-int Color_has_space(const struct Color *color, enum ColorSpace space) {
-#else
-static inline int Color_has_space(const struct Color *color,
-				  enum ColorSpace     space) {
-#endif
-	return (color->valid_spaces & COLOR_SPACE_BIT(space)) != 0;
-}
-
-static inline float linearize(float channel) {
+    static inline float
+    linearize(float channel) {
 	return (channel > 0.04045f) ? powf((channel + 0.055f) / 1.055f, 2.4f)
 				    : channel / 12.92f;
 }
@@ -58,30 +42,38 @@ static inline float gamma_correct(float channel) {
 }
 
 struct Color Color_create(const float r, const float g, const float b) {
-	struct Color color = {0};
-	color.srgb.r	   = linearize(r / 255.0f);
-	color.srgb.g	   = linearize(g / 255.0f);
-	color.srgb.b	   = linearize(b / 255.0f);
-	color.valid_spaces = 0;
-	Color_mark_space(&color, COLOR_SRGB);
+	struct Color color  = {0};
+	color.data.srgb.r   = linearize(r / 255.0f);
+	color.data.srgb.g   = linearize(g / 255.0f);
+	color.data.srgb.b   = linearize(b / 255.0f);
+	color.current_space = COLOR_SRGB;
 	return color;
 }
 
 struct Color Color_create_norm(const float r, const float g, const float b) {
 	struct Color color;
-	color.srgb.r	   = linearize(r);
-	color.srgb.g	   = linearize(g);
-	color.srgb.b	   = linearize(b);
-	color.valid_spaces = 0;
-	Color_mark_space(&color, COLOR_SRGB);
+	color.data.srgb.r   = linearize(r);
+	color.data.srgb.g   = linearize(g);
+	color.data.srgb.b   = linearize(b);
+	color.current_space = COLOR_SRGB;
 	return color;
 }
+
+struct Color Color_create_lab(const float l, const float a, const float b) {
+	struct Color color;
+	color.data.cielab.l = l;
+	color.data.cielab.a = a;
+	color.data.cielab.b = b;
+	color.current_space = COLOR_CIELAB;
+	return color;
+}
+
 #ifdef PALETTE_DEBUG
 inline void convert_cielab_to_srgb(struct Color *color) {
 #else
 static inline void convert_cielab_to_srgb(struct Color *color) {
 #endif
-	const struct cieLAB lab = color->cielab;
+	const struct cieLAB lab = color->data.cielab;
 
 	double fy = (lab.l + 16.0) / 116.0;
 	double fx = fy + (lab.a / 500.0);
@@ -96,22 +88,40 @@ static inline void convert_cielab_to_srgb(struct Color *color) {
 	y *= Y2;
 	z *= Z2;
 
-	color->srgb.r = fma(x, 3.2404542, fma(y, -1.5371385, z * -0.4985314));
-	color->srgb.g = fma(x, -0.9692660, fma(y, 1.8760108, z * 0.0415560));
-	color->srgb.b = fma(x, 0.0556434, fma(y, -0.2040259, z * 1.0572252));
+	color->data.srgb.r =
+	    fma(x, 3.2404542, fma(y, -1.5371385, z * -0.4985314));
+	color->data.srgb.g =
+	    fma(x, -0.9692660, fma(y, 1.8760108, z * 0.0415560));
+	color->data.srgb.b =
+	    fma(x, 0.0556434, fma(y, -0.2040259, z * 1.0572252));
 
-	Color_mark_space(color, COLOR_SRGB);
+	color->current_space = COLOR_SRGB;
 }
+#ifdef PALETTE_DEBUG
+inline void convert_oklab_to_srgb(struct Color *color) {
+#else
+static inline void convert_oklab_to_srgb(struct Color *color) {
+#endif
+	const double L = color->data.oklab.l;
+	const double A = color->data.oklab.a;
+	const double B = color->data.oklab.b;
 
-struct Color Color_create_lab(const float l, const float a, const float b) {
-	struct Color color;
-	color.cielab.l	   = l;
-	color.cielab.a	   = a;
-	color.cielab.b	   = b;
-	color.valid_spaces = 0;
-	Color_mark_space(&color, COLOR_SRGB);
-	convert_cielab_to_srgb(&color);
-	return color;
+	const double l_ = fma(0.3963377774, A, fma(0.2158037573, B, L));
+	const double m_ = fma(-0.1055613458, A, fma(-0.0638541728, B, L));
+	const double s_ = fma(-0.0894841775, A, fma(-1.2914855480, B, L));
+
+	const double l3 = l_ * l_ * l_;
+	const double m3 = m_ * m_ * m_;
+	const double s3 = s_ * s_ * s_;
+
+	color->data.srgb.r =
+	    fma(4.0767416621, l3, fma(-3.3077115913, m3, 0.2309699292 * s3));
+	color->data.srgb.g =
+	    fma(-1.2684380046, l3, fma(2.6097574011, m3, -0.3413193965 * s3));
+	color->data.srgb.b =
+	    fma(-0.0041960863, l3, fma(-0.7034186147, m3, 1.7076147010 * s3));
+
+	color->current_space = COLOR_SRGB;
 }
 
 #ifdef PALETTE_DEBUG
@@ -119,11 +129,11 @@ void convert_srgb_to_cielab(struct Color *color) {
 #else
 static void convert_srgb_to_cielab(struct Color *color) {
 #endif
-	const struct sRGB srgb = color->srgb;
+	const struct sRGB srgb = color->data.srgb;
 
-	double r = srgb.r;
-	double g = srgb.g;
-	double b = srgb.b;
+	const double r = srgb.r;
+	const double g = srgb.g;
+	const double b = srgb.b;
 
 	double x = fma(r, 0.4124564, fma(g, 0.3575761, b * 0.1804375));
 	double y = fma(r, 0.2126729, fma(g, 0.7151522, b * 0.0721750));
@@ -133,15 +143,18 @@ static void convert_srgb_to_cielab(struct Color *color) {
 	y /= Y2;
 	z /= Z2;
 
-	double fx = x > DELTA ? pow(x, 1.0 / 3.0) : fma(7.787, x, 16.0 / 116.0);
-	double fy = y > DELTA ? pow(y, 1.0 / 3.0) : fma(7.787, y, 16.0 / 116.0);
-	double fz = z > DELTA ? pow(z, 1.0 / 3.0) : fma(7.787, z, 16.0 / 116.0);
+	const double fx =
+	    x > DELTA ? pow(x, 1.0 / 3.0) : fma(7.787, x, 16.0 / 116.0);
+	const double fy =
+	    y > DELTA ? pow(y, 1.0 / 3.0) : fma(7.787, y, 16.0 / 116.0);
+	const double fz =
+	    z > DELTA ? pow(z, 1.0 / 3.0) : fma(7.787, z, 16.0 / 116.0);
 
-	color->cielab.l = fma(116.0, fy, -16.0);
-	color->cielab.a = 500.0 * (fx - fy);
-	color->cielab.b = 200.0 * (fy - fz);
+	color->data.cielab.l = fma(116.0, fy, -16.0);
+	color->data.cielab.a = 500.0 * (fx - fy);
+	color->data.cielab.b = 200.0 * (fy - fz);
 
-	Color_mark_space(color, COLOR_CIELAB);
+	color->current_space = COLOR_CIELAB;
 }
 
 #ifdef PALETTE_DEBUG
@@ -149,7 +162,7 @@ void convert_srgb_to_oklab(struct Color *color) {
 #else
 static void convert_srgb_to_oklab(struct Color *color) {
 #endif
-	const struct sRGB srgb = color->srgb;
+	const struct sRGB srgb = color->data.srgb;
 
 	double l = fma(0.4122214708, srgb.r,
 		       fma(0.5363325363, srgb.g, 0.0514459929 * srgb.b));
@@ -162,26 +175,24 @@ static void convert_srgb_to_oklab(struct Color *color) {
 	m = cbrt(m);
 	s = cbrt(s);
 
-	color->oklab.l =
+	color->data.oklab.l =
 	    fma(0.2104542553, l, fma(0.7936177850, m, -0.0040720468 * s));
-	color->oklab.a =
+	color->data.oklab.a =
 	    fma(1.9779984951, l, fma(-2.4285922050, m, 0.4505937099 * s));
-	color->oklab.b =
+	color->data.oklab.b =
 	    fma(0.0259040371, l, fma(0.7827717662, m, -0.8086757660 * s));
 
-	Color_mark_space(color, COLOR_OKLAB);
+	color->current_space = COLOR_OKLAB;
 }
-#ifdef PALETTE_DEBUG
-void convert_srgb_to_grayscale(struct Color *color) {
-#else
-static inline void convert_srgb_to_grayscale(struct Color *color) {
-#endif
-	struct sRGB srgb = color->srgb;
 
-	float l = fma(0.2126, srgb.r, fma(0.7152, srgb.g, 0.0722 * srgb.b));
+static inline void convert_cielab_to_oklab(struct Color *color) {
+	convert_cielab_to_srgb(color);
+	convert_srgb_to_oklab(color);
+}
 
-	color->grayscale.l = l;
-	Color_mark_space(color, COLOR_GRAY);
+static inline void convert_oklab_to_cielab(struct Color *color) {
+	convert_oklab_to_srgb(color);
+	convert_srgb_to_cielab(color);
 }
 
 /* Color difference functions begin here */
@@ -345,80 +356,103 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB *sam,
 }
 
 float delta_ok_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(sam, COLOR_OKLAB)) {
-		convert_srgb_to_oklab(sam);
-	}
-	if (!Color_has_space(ref, COLOR_OKLAB)) {
-		convert_srgb_to_oklab(ref);
-	}
-	return delta_ok_diff_fast(&sam->oklab, &ref->oklab);
+	convert_to(sam, COLOR_OKLAB);
+	convert_to(ref, COLOR_OKLAB);
+	return delta_ok_diff_fast(&sam->data.oklab, &ref->data.oklab);
 }
 
 float delta_cie76_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(sam, COLOR_CIELAB)) {
-		convert_srgb_to_cielab(sam);
-	}
-	if (!Color_has_space(ref, COLOR_CIELAB)) {
-		convert_srgb_to_cielab(ref);
-	}
-	return delta_cie76_diff_fast(&sam->cielab, &ref->cielab);
+	convert_to(sam, COLOR_CIELAB);
+	convert_to(ref, COLOR_CIELAB);
+	return delta_cie76_diff_fast(&sam->data.cielab, &ref->data.cielab);
 }
 
 float delta_cie94_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(sam, COLOR_CIELAB)) {
-		convert_srgb_to_cielab(sam);
-	}
-	if (!Color_has_space(ref, COLOR_CIELAB)) {
-		convert_srgb_to_cielab(ref);
-	}
+	convert_to(sam, COLOR_CIELAB);
+	convert_to(ref, COLOR_CIELAB);
 
-	return delta_cie94_diff_fast(&sam->cielab, &ref->cielab);
+	return delta_cie94_diff_fast(&sam->data.cielab, &ref->data.cielab);
 }
 
 float delta_ciede2000_diff(struct Color *sam, struct Color *ref) {
-	if (!Color_has_space(sam, COLOR_CIELAB)) {
-		convert_srgb_to_cielab(sam);
-	}
-	if (!Color_has_space(ref, COLOR_CIELAB)) {
-		convert_srgb_to_cielab(ref);
-	}
+	convert_to(sam, COLOR_CIELAB);
+	convert_to(ref, COLOR_CIELAB);
 #ifdef PALETTE_DEBUG
 	struct E2000_diff diff;
-	diff.l[0] = sam->cielab.l;
-	diff.a[0] = sam->cielab.a;
-	diff.b[0] = sam->cielab.b;
-	diff.l[1] = ref->cielab.l;
-	diff.a[1] = ref->cielab.a;
-	diff.b[1] = ref->cielab.b;
+	diff.l[0] = sam->data.cielab.l;
+	diff.a[0] = sam->data.cielab.a;
+	diff.b[0] = sam->data.cielab.b;
+	diff.l[1] = ref->data.cielab.l;
+	diff.a[1] = ref->data.cielab.a;
+	diff.b[1] = ref->data.cielab.b;
 	return delta_ciede2000_diff_fast(&diff);
 #else
-	return delta_ciede2000_diff_fast(&sam->cielab, &ref->cielab);
+	return delta_ciede2000_diff_fast(&sam->data.cielab, &ref->data.cielab);
 #endif
-}
-
-void Color_calc_spaces(struct Color *color) {
-	convert_srgb_to_oklab(color);
-	convert_srgb_to_cielab(color);
-	convert_srgb_to_grayscale(color);
 }
 
 #ifdef PALETTE_DEBUG
 void Color_print(struct Color *color) {
-	printf("Linear sRGB: (%f, %f, %f)\n", color->srgb.r, color->srgb.g,
-	       color->srgb.b);
-	if (!Color_has_space(color, COLOR_OKLAB)) {
-		convert_srgb_to_oklab(color);
-	}
-	printf("okLAB: (%f, %f, %f)\n", color->oklab.l, color->oklab.a,
-	       color->oklab.b);
-	if (!Color_has_space(color, COLOR_CIELAB)) {
+	switch (color->current_space) {
+	case COLOR_SRGB:
+		printf("Linear sRGB: (%f, %f, %f)\n", color->data.srgb.r,
+		       color->data.srgb.g, color->data.srgb.b);
 		convert_srgb_to_cielab(color);
+		printf("cieLAB: (%f, %f, %f)\n", color->data.cielab.l,
+		       color->data.cielab.a, color->data.cielab.b);
+		convert_cielab_to_srgb(color);
+		convert_srgb_to_oklab(color);
+		printf("okLAB: (%f, %f, %f)\n", color->data.oklab.l,
+		       color->data.oklab.a, color->data.oklab.b);
+		break;
+	case COLOR_CIELAB:
+		printf("cieLAB: (%f, %f, %f)\n", color->data.cielab.l,
+		       color->data.cielab.a, color->data.cielab.b);
+		convert_cielab_to_srgb(color);
+		printf("Linear sRGB: (%f, %f, %f)\n", color->data.srgb.r,
+		       color->data.srgb.g, color->data.srgb.b);
+		convert_srgb_to_oklab(color);
+		printf("okLAB: (%f, %f, %f)\n", color->data.oklab.l,
+		       color->data.oklab.a, color->data.oklab.b);
+		break;
+	case COLOR_OKLAB:
+		printf("okLAB: (%f, %f, %f)\n", color->data.oklab.l,
+		       color->data.oklab.a, color->data.oklab.b);
+		convert_oklab_to_srgb(color);
+		printf("Linear sRGB: (%f, %f, %f)\n", color->data.srgb.r,
+		       color->data.srgb.g, color->data.srgb.b);
+		convert_srgb_to_cielab(color);
+		printf("cieLAB: (%f, %f, %f)\n", color->data.cielab.l,
+		       color->data.cielab.a, color->data.cielab.b);
+		break;
+	default:
+		printf("Unknown color space.\n");
 	}
-	printf("cieLAB: (%f, %f, %f)\n", color->cielab.l, color->cielab.a,
-	       color->cielab.b);
-	if (!Color_has_space(color, COLOR_GRAY)) {
-		convert_srgb_to_grayscale(color);
-	}
-	printf("Grayscale: %f\n", color->grayscale.l);
 }
 #endif
+
+typedef void (*convert_fn)(struct Color *);
+
+convert_fn conversion_table[COLORSPACE_COUNT][COLORSPACE_COUNT] = {
+    [COLOR_SRGB]   = {[COLOR_SRGB]   = NULL,
+		      [COLOR_CIELAB] = convert_srgb_to_cielab,
+		      [COLOR_OKLAB]  = convert_srgb_to_oklab},
+    [COLOR_CIELAB] = {[COLOR_CIELAB] = NULL,
+		      [COLOR_OKLAB]  = convert_cielab_to_oklab,
+		      [COLOR_SRGB]   = convert_cielab_to_srgb},
+    [COLOR_OKLAB]  = {[COLOR_OKLAB]  = NULL,
+		      [COLOR_SRGB]   = convert_oklab_to_srgb,
+		      [COLOR_CIELAB] = convert_oklab_to_cielab}};
+
+void convert_to(struct Color *color, enum ColorSpace t) {
+	if (t == color->current_space) {
+		return;
+	}
+
+	convert_fn fn = conversion_table[color->current_space][t];
+	if (fn) {
+		fn(color);
+	} else {
+		printf("Unknown color conversion.\n");
+	}
+}

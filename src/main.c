@@ -15,7 +15,7 @@
  * High level overview:
  * There are three queues, and four threads.
  * The first queue contains frames passed in from FFMPEG
- * FFMPEG will be picky about what frames it queues if:
+ * FFMPEG will be picky about what frames it queues. If:
  * The frame is a key frame
  * It has been >=1 second (in video time) since the last frame
  * The first thread will pull from this queue, and perform pre-processing
@@ -79,9 +79,7 @@ int main(int argc, char **argv) {
 
 	Color col1 = Color_create(rand() % 255, rand() % 255, rand() % 255);
 	Color col2 = Color_create(rand() % 255, rand() % 255, rand() % 255);
-
-	Color_calc_spaces(&col1);
-	Color_calc_spaces(&col2);
+	
 	printf("Delta ok took %lu cycles on average.\n",
 	       time_diff(delta_ok_diff, col1, col2, RUNS));
 	printf("Delta cie76 took %lu cycles on average.\n",

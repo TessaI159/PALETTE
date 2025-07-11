@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-enum ColorSpace { COLOR_SRGB, COLOR_OKLAB, COLOR_CIELAB, COLOR_GRAY };
+enum ColorSpace { COLOR_SRGB, COLOR_OKLAB, COLOR_CIELAB };
 
 typedef struct E2000_diff E200_diff;
 
@@ -21,27 +21,22 @@ struct cieLAB {
 	float l, a, b;
 };
 
-struct Grayscale {
-	float l;
-};
-
 struct Color {
-	struct okLAB	 oklab;
-	struct cieLAB	 cielab;
-	struct sRGB	 srgb;
-	struct Grayscale grayscale;
-	uint8_t		 valid_spaces;
+	enum ColorSpace current_space;
+	union {
+		struct okLAB  oklab;
+		struct cieLAB cielab;
+		struct sRGB   srgb;
+	} data;
 };
 
 #ifdef PALETTE_DEBUG
 void  Color_print(struct Color *color);
-int   Color_has_space(const struct Color *color, enum ColorSpace space);
-void  convert_srgb_to_grayscale(struct Color *color);
 float delta_ciede2000_diff_fast(struct E2000_diff *diff);
 void  convert_cielab_to_srgb(struct Color *color);
+void  convert_oklab_to_srgb(struct Color *color);
 void  convert_srgb_to_cielab(struct Color *color);
 void  convert_srgb_to_oklab(struct Color *color);
-void  convert_srgb_to_grayscale(struct Color *color);
 /* void convert oklab_to_srgb(struct Color *color) */
 #endif
 
@@ -49,9 +44,7 @@ void  convert_srgb_to_grayscale(struct Color *color);
 struct Color Color_create(const float r, const float g, const float b);
 struct Color Color_create_norm(const float r, const float g, const float b);
 struct Color Color_create_lab(const float l, const float a, const float b);
-
-/* Calculates all spaces. Used for testing */
-void Color_calc_spaces(struct Color *color);
+void convert_to(struct Color *color, enum ColorSpace t);
 
 /* Euclidean oklab diff. ~35 cycles */
 float delta_ok_diff(struct Color *sam, struct Color *ref);

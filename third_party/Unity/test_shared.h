@@ -25,7 +25,6 @@ extern struct Color	colors[];
 extern struct sRGB	linears[];
 extern struct cieLAB	cielabs[];
 extern struct okLAB	oklabs[];
-extern struct Grayscale grayscales[];
 
 extern float	  oklab_diffs[];
 extern float	  cie76_diffs[];

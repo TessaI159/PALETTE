@@ -13,7 +13,6 @@ struct Color	 colors[NUM_REF_COL];
 struct sRGB	 linears[NUM_REF_COL];
 struct cieLAB	 cielabs[NUM_REF_COL];
 struct okLAB	 oklabs[NUM_REF_COL];
-struct Grayscale grayscales[NUM_REF_COL];
 
 float	   oklab_diffs[NUM_DIF];
 float	   cie76_diffs[NUM_DIF];
@@ -52,8 +51,6 @@ static inline bool parse_ref(const char *filename) {
 		oklabs[index].l = strtof(fields[OKL], NULL);
 		oklabs[index].a = strtof(fields[OKA], NULL);
 		oklabs[index].b = strtof(fields[OKB], NULL);
-
-		grayscales[index].l = strtof(fields[GRAY], NULL);
 	}
 	return true;
 }
