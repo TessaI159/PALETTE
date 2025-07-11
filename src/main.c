@@ -72,9 +72,9 @@ static inline int height_from_width(int width) {
 }
 
 int main(int argc, char **argv) {
-	/* srand(0); */
+	srand(0);
 	query_features(&features);
-	
+
 	printf("Color is %zu bytes\n", sizeof(struct Color));
 
 	Color col1 = Color_create(rand() % 255, rand() % 255, rand() % 255);
@@ -90,6 +90,7 @@ int main(int argc, char **argv) {
 	       time_diff(delta_cie94_diff, col1, col2, RUNS));
 	printf("Delta ciede2000 took %lu cycles on average.\n",
 	       time_diff(delta_ciede2000_diff, col1, col2, RUNS));
+	
 	printf("%" PRIu64 " bytes of l1 cache\n", features.l[1]);
 	printf("%" PRIu64 " bytes of l2 cache\n", features.l[2]);
 	printf("%" PRIu64 " bytes of l3 cache\n", features.l[3]);

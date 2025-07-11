@@ -33,6 +33,9 @@ extern E2000_diff   e2000_diffs_calc[NUM_E2000_PAIR]
 	color->valid_spaces |= COLOR_SPACE_BIT(space);
 }
 
+/* TODO (Tess): Allow creation of colors with oklab */
+/* TODO (Tess): oklab to srgb conversion */
+
 #ifdef PALETTE_DEBUG
 int Color_has_space(const struct Color *color, enum ColorSpace space) {
 #else
@@ -47,6 +50,7 @@ static inline float linearize(float channel) {
 				    : channel / 12.92f;
 }
 
+/* This is a special tool we will need for later */
 static inline float gamma_correct(float channel) {
 	return (channel > 0.0031308f)
 		   ? 1.055f * powf(channel, 1.0f / 2.4f) - 0.055f
@@ -72,8 +76,11 @@ struct Color Color_create_norm(const float r, const float g, const float b) {
 	Color_mark_space(&color, COLOR_SRGB);
 	return color;
 }
-
+#ifdef PALETTE_DEBUG
+inline void convert_cielab_to_srgb(struct Color *color) {
+#else
 static inline void convert_cielab_to_srgb(struct Color *color) {
+#endif
 	const struct cieLAB lab = color->cielab;
 
 	double fy = (lab.l + 16.0) / 116.0;
@@ -107,7 +114,11 @@ struct Color Color_create_lab(const float l, const float a, const float b) {
 	return color;
 }
 
+#ifdef PALETTE_DEBUG
+void convert_srgb_to_cielab(struct Color *color) {
+#else
 static void convert_srgb_to_cielab(struct Color *color) {
+#endif
 	const struct sRGB srgb = color->srgb;
 
 	double r = srgb.r;
@@ -122,9 +133,9 @@ static void convert_srgb_to_cielab(struct Color *color) {
 	y /= Y2;
 	z /= Z2;
 
-	double fx = x > DELTA ? cbrt(x) : fma(7.787, x, 16.0 / 116.0);
-	double fy = y > DELTA ? cbrt(y) : fma(7.787, y, 16.0 / 116.0);
-	double fz = z > DELTA ? cbrt(z) : fma(7.787, z, 16.0 / 116.0);
+	double fx = x > DELTA ? pow(x, 1.0 / 3.0) : fma(7.787, x, 16.0 / 116.0);
+	double fy = y > DELTA ? pow(y, 1.0 / 3.0) : fma(7.787, y, 16.0 / 116.0);
+	double fz = z > DELTA ? pow(z, 1.0 / 3.0) : fma(7.787, z, 16.0 / 116.0);
 
 	color->cielab.l = fma(116.0, fy, -16.0);
 	color->cielab.a = 500.0 * (fx - fy);
@@ -133,7 +144,11 @@ static void convert_srgb_to_cielab(struct Color *color) {
 	Color_mark_space(color, COLOR_CIELAB);
 }
 
+#ifdef PALETTE_DEBUG
+void convert_srgb_to_oklab(struct Color *color) {
+#else
 static void convert_srgb_to_oklab(struct Color *color) {
+#endif
 	const struct sRGB srgb = color->srgb;
 
 	double l = fma(0.4122214708, srgb.r,
@@ -143,9 +158,9 @@ static void convert_srgb_to_oklab(struct Color *color) {
 	double s = fma(0.0883024619, srgb.r,
 		       fma(0.2817188376, srgb.g, 0.6299787005 * srgb.b));
 
-	l = cbrtf(l);
-	m = cbrtf(m);
-	s = cbrtf(s);
+	l = cbrt(l);
+	m = cbrt(m);
+	s = cbrt(s);
 
 	color->oklab.l =
 	    fma(0.2104542553, l, fma(0.7936177850, m, -0.0040720468 * s));
@@ -184,15 +199,18 @@ static inline float delta_cie76_diff_fast(const struct cieLAB *sam,
 
 static inline float delta_cie94_diff_fast(const struct cieLAB *sam,
 					  const struct cieLAB *ref) {
+	struct cieLAB s = *sam;
+	struct cieLAB r = *ref;
+
 	const double K1 = 0.045;
 	const double K2 = 0.015;
 
-	const double dl = sam->l - ref->l;
-	const double da = sam->a - ref->a;
-	const double db = sam->b - ref->b;
+	const double dl = s.l - r.l;
+	const double da = s.a - r.a;
+	const double db = s.b - r.b;
 
-	const double C1 = sqrt(SQUARE(sam->a) + SQUARE(sam->b));
-	const double C2 = sqrt(SQUARE(ref->a) + SQUARE(ref->b));
+	const double C1 = sqrt(SQUARE(s.a) + SQUARE(s.b));
+	const double C2 = sqrt(SQUARE(r.a) + SQUARE(r.b));
 	const double dC = C1 - C2;
 
 	const double dH2 = SQUARE(da) + SQUARE(db) - SQUARE(dC);

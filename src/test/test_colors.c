@@ -1,8 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "Color.h"
+#include "Util.h"
 #include "test_shared.h"
 #include "unity.h"
+
+#define RUNS 4194304
 
 static inline void print_refs() {
 	for (size_t i = 0; i < NUM_REF_COL; ++i) {
@@ -20,7 +24,6 @@ static inline void print_refs() {
 		printf("\n\n");
 	}
 }
-
 
 static inline void print_diffs() {
 	size_t i = 0;
@@ -200,7 +203,6 @@ void test_cie76_diff(void) {
 	}
 }
 
-
 void test_cie94_diff(void) {
 	size_t i = 0;
 	for (size_t i1 = 0; i1 < NUM_REF_COL; ++i1) {
@@ -305,43 +307,41 @@ void test_ciede2000_diff(void) {
 		    e2000_diffs_calc[i].avghp, act_msg);
 
 		sprintf(act_msg, tmp_msg, i, "g",
-			fabs(e2000_diffs_calc[i].g -
-			     e2000_diffs_scanned[i].g));
+			fabs(e2000_diffs_calc[i].g - e2000_diffs_scanned[i].g));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
 		    E2000_DELTA, e2000_diffs_scanned[i].g,
 		    e2000_diffs_calc[i].g, act_msg);
 
 		sprintf(act_msg, tmp_msg, i, "t",
-			fabs(e2000_diffs_calc[i].t -
-			     e2000_diffs_scanned[i].t));
+			fabs(e2000_diffs_calc[i].t - e2000_diffs_scanned[i].t));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
 		    E2000_DELTA, e2000_diffs_scanned[i].t,
 		    e2000_diffs_calc[i].t, act_msg);
 
-		sprintf(act_msg, tmp_msg, i, "sl",
-			fabs(e2000_diffs_calc[i].sl -
-			     e2000_diffs_scanned[i].sl));
+		sprintf(
+		    act_msg, tmp_msg, i, "sl",
+		    fabs(e2000_diffs_calc[i].sl - e2000_diffs_scanned[i].sl));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
 		    E2000_DELTA, e2000_diffs_scanned[i].sl,
 		    e2000_diffs_calc[i].sl, act_msg);
 
-		sprintf(act_msg, tmp_msg, i, "sc",
-			fabs(e2000_diffs_calc[i].sc -
-			     e2000_diffs_scanned[i].sc));
+		sprintf(
+		    act_msg, tmp_msg, i, "sc",
+		    fabs(e2000_diffs_calc[i].sc - e2000_diffs_scanned[i].sc));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
 		    E2000_DELTA, e2000_diffs_scanned[i].sc,
 		    e2000_diffs_calc[i].sc, act_msg);
 
-		sprintf(act_msg, tmp_msg, i, "sh",
-			fabs(e2000_diffs_calc[i].sh -
-			     e2000_diffs_scanned[i].sh));
+		sprintf(
+		    act_msg, tmp_msg, i, "sh",
+		    fabs(e2000_diffs_calc[i].sh - e2000_diffs_scanned[i].sh));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
 		    E2000_DELTA, e2000_diffs_scanned[i].sh,
 		    e2000_diffs_calc[i].sh, act_msg);
 
-		sprintf(act_msg, tmp_msg, i, "rt",
-			fabs(e2000_diffs_calc[i].rt -
-			     e2000_diffs_scanned[i].rt));
+		sprintf(
+		    act_msg, tmp_msg, i, "rt",
+		    fabs(e2000_diffs_calc[i].rt - e2000_diffs_scanned[i].rt));
 		TEST_ASSERT_FLOAT_WITHIN_MESSAGE(
 		    E2000_DELTA, e2000_diffs_scanned[i].rt,
 		    e2000_diffs_calc[i].rt, act_msg);
@@ -353,4 +353,20 @@ void test_ciede2000_diff(void) {
 		    E2000_DELTA, e2000_diffs_scanned[i].diff,
 		    e2000_diffs_calc[i].diff, act_msg);
 	}
+}
+
+void speed_test(void) {
+#ifdef PALETTE_DEBUG
+	srand(0);
+	Color col1 = Color_create(rand() % 255, rand() % 255, rand() % 255);
+	Color_calc_spaces(&col1);
+	printf("srgb_to_cielab took %lu cycles on average.\n",
+	       time_conv(convert_srgb_to_cielab, col1, RUNS));
+	printf("srgb_to_oklab took %lu cycles on average.\n",
+	       time_conv(convert_srgb_to_oklab, col1, RUNS));
+	printf("srgb_to_grayscale took %lu cycles on average.\n",
+	       time_conv(convert_srgb_to_grayscale, col1, RUNS));
+	printf("cielab_to_srgb took %lu cycles on average.\n",
+	       time_conv(convert_cielab_to_srgb, col1, RUNS));
+#endif
 }

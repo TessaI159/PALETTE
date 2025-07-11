@@ -6,5 +6,6 @@ typedef struct Color Color;
 
 uint64_t time_diff(float (*func)(Color *, Color *), Color col1, Color col2,
 		   const uint64_t RUNS);
+uint64_t time_conv(void (*func)(Color *), Color col, const uint64_t RUNS);
 
 #endif

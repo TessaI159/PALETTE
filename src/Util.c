@@ -11,13 +11,29 @@ uint64_t time_diff(float (*func)(Color *, Color *), struct Color col1,
 		func(&col1, &col2);
 	}
 
-	unsigned long long tic	 = __rdtsc();
+	uint64_t tic = __rdtsc();
 
 	for (uint64_t i = 0; i < RUNS; ++i) {
 
 		func(&col1, &col2);
 	}
-	unsigned long long toc = __rdtsc();
+	uint64_t toc = __rdtsc();
+
+	return (toc - tic) / RUNS;
+}
+
+uint64_t time_conv(void (*func)(Color *), Color col, const uint64_t RUNS) {
+	/* Warm the function up */
+	for (int i = 0; i < 1000; ++i) {
+		func(&col);
+	}
+	uint64_t tic = __rdtsc();
+
+	for (uint64_t i = 0; i < RUNS; ++i) {
+
+		func(&col);
+	}
+	uint64_t toc = __rdtsc();
 
 	return (toc - tic) / RUNS;
 }

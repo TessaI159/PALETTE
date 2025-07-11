@@ -38,6 +38,11 @@ void  Color_print(struct Color *color);
 int   Color_has_space(const struct Color *color, enum ColorSpace space);
 void  convert_srgb_to_grayscale(struct Color *color);
 float delta_ciede2000_diff_fast(struct E2000_diff *diff);
+void  convert_cielab_to_srgb(struct Color *color);
+void  convert_srgb_to_cielab(struct Color *color);
+void  convert_srgb_to_oklab(struct Color *color);
+void  convert_srgb_to_grayscale(struct Color *color);
+/* void convert oklab_to_srgb(struct Color *color) */
 #endif
 
 /* Must be constructed with rgb for now */
