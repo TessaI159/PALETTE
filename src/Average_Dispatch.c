@@ -2,7 +2,7 @@
 #include "Color.h"
 #include "FeatureDetection.h"
 
-static struct Color (*lab_avg_intern)(const struct Color **colors,
+static struct Color (*lab_avg_intern)(const struct Color *colors,
 				      uint16_t num_col) = lab_avg_fallback;
 void average_init() {
 	if (!features.initialized) {
@@ -17,7 +17,7 @@ void average_init() {
 	}
 }
 
-struct Color lab_avg(const struct Color **colors, uint16_t num_col) {
+struct Color lab_avg(const struct Color *colors, uint16_t num_col) {
   static bool average_initialized = false;
 	if (!average_initialized) {
 		average_init();
