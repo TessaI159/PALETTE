@@ -38,7 +38,7 @@ float delta_ciede2000_diff_fast(struct E2000_diff *diff);
 void  convert_to(struct Color *color, enum ColorSpace t);
 #endif
 
-/* Must be constructed with rgb for now */
+
 struct Color Color_create(const float r, const float g, const float b);
 struct Color Color_create_norm(const float r, const float g, const float b);
 struct Color Color_create_lab(const float l, const float a, const float b);

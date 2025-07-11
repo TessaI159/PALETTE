@@ -169,9 +169,9 @@ static void convert_srgb_to_oklab(struct Color *color) {
 	double s = fma(0.0883024619, srgb.r,
 		       fma(0.2817188376, srgb.g, 0.6299787005 * srgb.b));
 
-	l = cbrt(l);
-	m = cbrt(m);
-	s = cbrt(s);
+	l = pow(l, 1.0 / 3.0);
+	m = pow(m, 1.0 / 3.0);
+	s = pow(s, 1.0 / 3.0);
 
 	color->data.oklab.l =
 	    fma(0.2104542553, l, fma(0.7936177850, m, -0.0040720468 * s));
@@ -277,36 +277,36 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB *sam,
 	const double kh = 1;
 	const double kc = 1;
 #ifdef PALETTE_DEBUG
-	double l1 = diff->l[0], a1 = diff->a[0], b1 = diff->b[0];
-	double l2 = diff->l[1], a2 = diff->a[1], b2 = diff->b[1];
+	const double l1 = diff->l[0], a1 = diff->a[0], b1 = diff->b[0];
+	const double l2 = diff->l[1], a2 = diff->a[1], b2 = diff->b[1];
 #else
-	double l1 = sam->l, a1 = sam->a, b1 = sam->b;
-	double l2 = ref->l, a2 = ref->a, b2 = ref->b;
+	const double l1 = sam->l, a1 = sam->a, b1 = sam->b;
+	const double l2 = ref->l, a2 = ref->a, b2 = ref->b;
 #endif
 
 	/* Step 1 */
-	double c1 = sqrtf(SQUARE(a1) + SQUARE(b1));
-	double c2 = sqrtf(SQUARE(a2) + SQUARE(b2));
+	const double c1 = sqrtf(SQUARE(a1) + SQUARE(b1));
+	const double c2 = sqrtf(SQUARE(a2) + SQUARE(b2));
 
-	double avgc = (c1 + c2) / 2.0;
+	const double avgc = (c1 + c2) / 2.0;
 	/* Saves calculating this twice */
-	double g =
+	const double g =
 	    0.5f * (1.0f - sqrtf(SECOND_SURSOLID(avgc) /
 				 (SECOND_SURSOLID(avgc) + 6103515625.0)));
-	double a1p = (1.0 + g) * a1;
-	double a2p = (1.0 + g) * a2;
-	double c1p = sqrt(SQUARE(a1p) + SQUARE(b1));
-	double c2p = sqrt(SQUARE(a2p) + SQUARE(b2));
-	double h1p = (b1 == 0.0 && a1p == 0.0)
-			 ? 0
-			 : fmod(RAD2DEG(atan2(b1, a1p)) + 360.0, 360.0);
-	double h2p = (b2 == 0.0f && a2p == 0.0f)
-			 ? 0
-			 : fmod(RAD2DEG(atan2(b2, a2p)) + 360.0, 360.0);
+	const double a1p = (1.0 + g) * a1;
+	const double a2p = (1.0 + g) * a2;
+	const double c1p = sqrt(SQUARE(a1p) + SQUARE(b1));
+	const double c2p = sqrt(SQUARE(a2p) + SQUARE(b2));
+	const double h1p = (b1 == 0.0 && a1p == 0.0)
+			       ? 0
+			       : fmod(RAD2DEG(atan2(b1, a1p)) + 360.0, 360.0);
+	const double h2p = (b2 == 0.0f && a2p == 0.0f)
+			       ? 0
+			       : fmod(RAD2DEG(atan2(b2, a2p)) + 360.0, 360.0);
 
 	/* Step 2 */
-	double dlp = l2 - l1;
-	double dcp = c2p - c1p;
+	const double dlp = l2 - l1;
+	const double dcp = c2p - c1p;
 
 	double dhp;
 	if (c1p == 0.0 || c2p == 0.0) {
@@ -323,14 +323,13 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB *sam,
 		}
 	}
 
-	double dHp = 2.0 * sqrt(c1p * c2p) * sin(DEG2RAD(dhp / 2.0));
+	const double dHp = 2.0 * sqrt(c1p * c2p) * sin(DEG2RAD(dhp / 2.0));
 
 	/* Step 3 */
-	double avglp = (l1 + l2) / 2.0;
-	double avgcp = (c1p + c2p) / 2.0;
+	const double avglp = (l1 + l2) / 2.0;
+	const double avgcp = (c1p + c2p) / 2.0;
 
 	double avghp;
-
 	if (c1p == 0.0 || c2p == 0.0) {
 		avghp = h1p + h2p;
 	} else {
@@ -345,24 +344,24 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB *sam,
 		}
 	}
 
-	double t = 1.0 - 0.17 * cos(DEG2RAD(avghp - 30.0)) +
-		   0.24 * cos(DEG2RAD(2.0 * avghp)) +
-		   0.32 * cos(DEG2RAD(3.0 * avghp + 6.0)) -
-		   0.20 * cos(DEG2RAD(4.0 * avghp - 63.0));
-	double dtheta = 30.0 * exp(-(SQUARE((avghp - 275.0) / 25.0)));
-	double rc     = 2.0 * sqrt(SECOND_SURSOLID(avgcp) /
-				   (SECOND_SURSOLID(avgcp) + 6103515625.0f));
-	double sl     = 1.0 + ((0.015 * (SQUARE(avglp - 50.0))) /
-			       sqrt(20.0 + (SQUARE(avglp - 50.0))));
-	double sc     = 1.0 + 0.045 * avgcp;
-	double sh     = 1.0 + 0.015 * avgcp * t;
-	double rt     = -sin(DEG2RAD(2.0 * dtheta)) * rc;
-	double terml  = dlp / (kl * sl);
-	double termc  = dcp / (kc * sc);
-	double termh  = dHp / (kh * sh);
+	const double t = 1.0 - 0.17 * cos(DEG2RAD(avghp - 30.0)) +
+			 0.24 * cos(DEG2RAD(2.0 * avghp)) +
+			 0.32 * cos(DEG2RAD(3.0 * avghp + 6.0)) -
+			 0.20 * cos(DEG2RAD(4.0 * avghp - 63.0));
+	const double dtheta = 30.0 * exp(-(SQUARE((avghp - 275.0) / 25.0)));
+	const double rc	    = 2.0 * sqrt(SECOND_SURSOLID(avgcp) /
+					 (SECOND_SURSOLID(avgcp) + 6103515625.0));
+	const double sl	    = 1.0 + ((0.015 * (SQUARE(avglp - 50.0))) /
+				     sqrt(20.0 + (SQUARE(avglp - 50.0))));
+	const double sc	    = 1.0 + 0.045 * avgcp;
+	const double sh	    = 1.0 + 0.015 * avgcp * t;
+	const double rt	    = -sin(DEG2RAD(2.0 * dtheta)) * rc;
+	const double terml  = dlp / (kl * sl);
+	const double termc  = dcp / (kc * sc);
+	const double termh  = dHp / (kh * sh);
 
-	double ret = sqrt(SQUARE(terml) + SQUARE(termc) + SQUARE(termh) +
-			  rt * termc * termh);
+	const double ret = sqrt(SQUARE(terml) + SQUARE(termc) + SQUARE(termh) +
+				rt * termc * termh);
 #ifdef PALETTE_DEBUG
 	diff->ap[0] = a1p;
 	diff->ap[1] = a2p;
@@ -399,7 +398,6 @@ float delta_cie76_diff(struct Color *sam, struct Color *ref) {
 float delta_cie94_diff(struct Color *sam, struct Color *ref) {
 	convert_to(sam, COLOR_CIELAB);
 	convert_to(ref, COLOR_CIELAB);
-
 	return delta_cie94_diff_fast(&sam->data.cielab, &ref->data.cielab);
 }
 
@@ -422,40 +420,14 @@ float delta_ciede2000_diff(struct Color *sam, struct Color *ref) {
 
 #ifdef PALETTE_DEBUG
 void Color_print(struct Color *color) {
-	switch (color->current_space) {
-	case COLOR_SRGB:
-		printf("Linear sRGB: (%f, %f, %f)\n", color->data.srgb.r,
-		       color->data.srgb.g, color->data.srgb.b);
-		convert_srgb_to_cielab(color);
-		printf("cieLAB: (%f, %f, %f)\n", color->data.cielab.l,
-		       color->data.cielab.a, color->data.cielab.b);
-		convert_cielab_to_srgb(color);
-		convert_srgb_to_oklab(color);
-		printf("okLAB: (%f, %f, %f)\n", color->data.oklab.l,
-		       color->data.oklab.a, color->data.oklab.b);
-		break;
-	case COLOR_CIELAB:
-		printf("cieLAB: (%f, %f, %f)\n", color->data.cielab.l,
-		       color->data.cielab.a, color->data.cielab.b);
-		convert_cielab_to_srgb(color);
-		printf("Linear sRGB: (%f, %f, %f)\n", color->data.srgb.r,
-		       color->data.srgb.g, color->data.srgb.b);
-		convert_srgb_to_oklab(color);
-		printf("okLAB: (%f, %f, %f)\n", color->data.oklab.l,
-		       color->data.oklab.a, color->data.oklab.b);
-		break;
-	case COLOR_OKLAB:
-		printf("okLAB: (%f, %f, %f)\n", color->data.oklab.l,
-		       color->data.oklab.a, color->data.oklab.b);
-		convert_oklab_to_srgb(color);
-		printf("Linear sRGB: (%f, %f, %f)\n", color->data.srgb.r,
-		       color->data.srgb.g, color->data.srgb.b);
-		convert_srgb_to_cielab(color);
-		printf("cieLAB: (%f, %f, %f)\n", color->data.cielab.l,
-		       color->data.cielab.a, color->data.cielab.b);
-		break;
-	default:
-		printf("Unknown color space.\n");
-	}
+	convert_to(color, COLOR_SRGB);
+	printf("Linear sRGB: (%f, %f, %f)\n", color->data.srgb.r,
+	       color->data.srgb.g, color->data.srgb.b);
+	convert_to(color, COLOR_CIELAB);
+	printf("cieLAB: (%f, %f, %f)\n", color->data.cielab.l,
+	       color->data.cielab.a, color->data.cielab.b);
+	convert_to(color, COLOR_OKLAB);
+	printf("okLAB: (%f, %f, %f)\n", color->data.oklab.l,
+	       color->data.oklab.a, color->data.oklab.b);
 }
 #endif
