@@ -2,17 +2,21 @@
 #define FEATURE_DETECTION_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 struct system_features_t {
-	int	 avx;
-	int	 avx2;
-	int	 fma3;
+	bool	 avx;
+	bool	 avx2;
+	bool	 fma3;
 	uint64_t l[4];
 	uint8_t	 logical_cores;
 	uint8_t	 physical_cores;
 	uint16_t line_size;
-	int	 l2_shared;
+	bool	 l2_shared;
+	bool	 initialized;
 };
+
+extern struct system_features_t features;
 
 void query_features(struct system_features_t *features);
 

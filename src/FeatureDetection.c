@@ -25,6 +25,9 @@
 
 /* TODO (Tess): Correctly implement cache detection for non-Linux */
 
+struct system_features_t features = {false, false, false, {0, 0, 0, 0}, 0,
+				     0,	    0,	   false, false};
+
 #if defined(__linux__) || defined(__unix__) || defined(__poxis__)
 
 static int count_directories(const char *path) {
@@ -317,4 +320,5 @@ void query_features(struct system_features_t *features) {
 	query_physical_cores(features);
 	query_cache_sizes(features);
 	query_cpu_features(features);
+	features->initialized = true;
 }

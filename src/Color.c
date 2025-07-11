@@ -140,16 +140,14 @@ static inline void convert_srgb_to_grayscale(struct Color *color) {
 /* Color difference functions begin here */
 static inline float delta_ok_diff_fast(const struct okLAB *sam,
 				       const struct okLAB *ref) {
-	return sqrtf((sam->l - ref->l) * (sam->l - ref->l) +
-		     (sam->a - ref->a) * (sam->a - ref->a) +
-		     (sam->b - ref->b) * (sam->b - ref->b));
+	return sqrtf(SQUARE(sam->l - ref->l) + SQUARE(sam->a - ref->a) +
+		     SQUARE(sam->b - ref->b));
 }
 
 static inline float delta_cie76_diff_fast(const struct cieLAB *sam,
 					  const struct cieLAB *ref) {
-	return sqrtf(fmaf(sam->l - ref->l, sam->l - ref->l,
-			  fmaf(sam->a - ref->a, sam->a - ref->a,
-			       fmaf(sam->b - ref->b, sam->b - ref->b, 0))));
+	return sqrtf(SQUARE(sam->l - ref->l) + SQUARE(sam->a - ref->a) +
+		     SQUARE(sam->b - ref->b));
 }
 
 static inline float delta_cie94_diff_fast(const struct cieLAB *sam,
@@ -284,13 +282,13 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB *sam,
 	diff->hp[1] = h2p;
 
 	diff->avghp = avghp;
-	diff->g = g;
-	diff->t = t;
-	diff->sl = sl;
-	diff->sc = sc;
-	diff->sh = sh;
-	diff->rt = rt;
-	diff->diff = ret;
+	diff->g	    = g;
+	diff->t	    = t;
+	diff->sl    = sl;
+	diff->sc    = sc;
+	diff->sh    = sh;
+	diff->rt    = rt;
+	diff->diff  = ret;
 #endif
 
 	return ret;
@@ -347,6 +345,7 @@ float delta_ciede2000_diff(struct Color *sam, struct Color *ref) {
 	return delta_ciede2000_diff_fast(&sam->cielab, &ref->cielab);
 #endif
 }
+
 
 void Color_calc_spaces(struct Color *color) {
 	convert_srgb_to_oklab(color);

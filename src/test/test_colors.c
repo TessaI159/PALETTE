@@ -42,8 +42,6 @@ static inline void print_diffs() {
 	}
 }
 
-/* TODO (Tess): As with the others, print the calculated and the scanned values
- */
 static inline void print_e2000s() {
 	for (int i = 0; i < NUM_E2000_PAIR; ++i) {
 		printf("Pair %d\n", i);

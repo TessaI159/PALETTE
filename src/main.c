@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "Average.h"
 #include "Color.h"
 #include "FeatureDetection.h"
 #include "Util.h"
@@ -60,6 +61,7 @@
  */
 
 #define RUNS 4194304
+extern struct system_features_t features;
 
 static inline int width_from_pixels(int pixels) {
 	return round(sqrt(pixels) * 4.0f / 3.0f);
@@ -71,9 +73,8 @@ static inline int height_from_width(int width) {
 
 int main(int argc, char **argv) {
 	/* srand(0); */
-
-	struct system_features_t features;
 	query_features(&features);
+	
 	printf("Color is %zu bytes\n", sizeof(struct Color));
 
 	Color col1 = Color_create(rand() % 255, rand() % 255, rand() % 255);
@@ -128,8 +129,6 @@ int main(int argc, char **argv) {
 
 	/* struct Video in_video; */
 	/* open_video_file(&in_video, "vid.webm"); */
-
-	
-
+	lab_avg(NULL, 0);
 	return 0;
 }
