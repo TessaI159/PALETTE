@@ -68,8 +68,8 @@ struct Color Color_create(const float r, const float g, const float b);
  *@return A Color struct instantiated with sRGB values r, g, b
  **/
 struct Color Color_create_norm(const float r, const float g, const float b);
-struct Color Color_create_lab(const float l, const float a, const float b);
-struct Color Color_create_ok(const float l, const float a, const float b);
+struct Color Color_create_cielab(const float l, const float a, const float b);
+struct Color Color_create_oklab(const float l, const float a, const float b);
 
 /* Euclidean oklab diff. ~35 cycles */
 float delta_ok_diff(struct Color *sam, struct Color *ref);

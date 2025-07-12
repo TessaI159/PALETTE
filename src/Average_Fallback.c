@@ -3,7 +3,7 @@
 
 #include "Color.h"
 
-struct Color lab_avg_fallback(struct Color *colors, uint16_t num_col) {
+struct Color cielab_avg_fallback(struct Color *colors, uint16_t num_col) {
 	float l = 0.0f;
 	float a = 0.0f;
 	float b = 0.0f;
@@ -16,5 +16,5 @@ struct Color lab_avg_fallback(struct Color *colors, uint16_t num_col) {
 	a /= (float)num_col;
 	b /= (float)num_col;
 	
-	return Color_create_lab(l, a, b);
+	return Color_create_cielab(l, a, b);
 }

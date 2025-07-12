@@ -128,6 +128,6 @@ int main(int argc, char **argv) {
 
 	/* struct Video in_video; */
 	/* open_video_file(&in_video, "vid.webm"); */
-	lab_avg(NULL, 0);
+	cielab_avg(NULL, 0);
 	return 0;
 }

@@ -5,7 +5,7 @@
 
 #include "Color.h"
 
-struct Color lab_avg_avx(const struct Color *colors, uint16_t num_col) {
+struct Color cielab_avg_avx(const struct Color *colors, uint16_t num_col) {
 	puts("AVX average\n");
 	return Color_create(0, 0, 0);
 }
