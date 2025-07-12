@@ -24,8 +24,7 @@ struct Queue {
  *@param q A pointer to a pre-allocated Queue struct to initializes
  *@param The desired capacity of the queue
  *
- *@return true if the queue was successfully initialized
- *@return false if the memory allocation failed
+ *@return true if the queue was successfully initialized, false if not
  *
  *@note After a successful call:
  *       - 'q->cap' will be the least power of 2 >= the requested capacity
@@ -40,6 +39,7 @@ struct Queue {
  *@warning The behavior is undefined if 'q == NULL'
  **/
 bool Queue_create(struct Queue *q, size_t cap);
+
 /**
  *@brief Destroys a circular queue
  *

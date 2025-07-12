@@ -353,3 +353,20 @@ void test_ciede2000_diff(void) {
 	}
 }
 
+void test_conversion_speed(void) {
+	srand(0);
+	struct Color col =
+	    Color_create(rand() % 255, rand() % 255, rand() % 255);
+	printf("srgb_to_cielab took %lu cycles on average\n",
+	       time_conv(convert_to, col, COLOR_SRGB, COLOR_CIELAB, RUNS));
+	printf("srgb_to_oklab took %lu cycles on average\n",
+	       time_conv(convert_to, col, COLOR_SRGB, COLOR_OKLAB, RUNS));
+	printf("oklab_to_cielab took %lu cycles on average\n",
+	       time_conv(convert_to, col, COLOR_OKLAB, COLOR_CIELAB, RUNS));
+	printf("oklab_to_srgb took %lu cycles on average\n",
+	       time_conv(convert_to, col, COLOR_OKLAB, COLOR_SRGB, RUNS));
+	printf("cielab_to_oklab took %lu cycles on average\n",
+	       time_conv(convert_to, col, COLOR_CIELAB, COLOR_OKLAB, RUNS));
+	printf("cielab_to_srgbb took %lu cycles on average\n",
+	       time_conv(convert_to, col, COLOR_CIELAB, COLOR_SRGB, RUNS));
+}

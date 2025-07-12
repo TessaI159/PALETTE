@@ -42,7 +42,12 @@ static inline float gamma_correct(float channel) {
 }
 
 struct Color Color_create(const float r, const float g, const float b) {
-	struct Color color  = {0};
+	struct Color color = {0};
+	if (r < 0.0f || r > 255.0f || g < 0.0f || g > 255.0f || b < 0.0f ||
+	    b > 255.0f) {
+		fprintf(stderr, "rgb values out of range.\n");
+	}
+
 	color.data.srgb.r   = linearize(r / 255.0f);
 	color.data.srgb.g   = linearize(g / 255.0f);
 	color.data.srgb.b   = linearize(b / 255.0f);
