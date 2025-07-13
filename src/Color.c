@@ -1,5 +1,7 @@
 #include <stdio.h>
+#ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
+#endif
 #include <math.h>
 
 #include "Color.h"
@@ -22,14 +24,13 @@ static const double Z2	  = 1.08883;
 static const double DELTA = (6.0 / 29.0) * (6.0 / 29.0) * (6.0 / 29.0);
 #ifndef M_PI
 static const double M_PI = 3.14159265358979323846;
-extern E2000_diff   e2000_diffs_calc[NUM_E2000_PAIR]
+extern E2000_diff   e2000_diffs_calc[NUM_E2000_PAIR];
 #endif
 
-    /* TODO (Tess): Allow creation of colors with oklab */
-    /* TODO (Tess): oklab to srgb conversion */
+/* TODO (Tess): Allow creation of colors with oklab */
+/* TODO (Tess): oklab to srgb conversion */
 
-    static inline float
-    linearize(float channel) {
+static inline float linearize(float channel) {
 	return (channel > 0.04045f) ? powf((channel + 0.055f) / 1.055f, 2.4f)
 				    : channel / 12.92f;
 }
@@ -211,11 +212,9 @@ convert_fn conversion_table[COLORSPACE_COUNT][COLORSPACE_COUNT] = {
 		      [COLOR_SRGB]   = convert_oklab_to_srgb,
 		      [COLOR_CIELAB] = convert_oklab_to_cielab}};
 
-#ifdef PALETTE_DEBUG
+
 void convert_to(struct Color *color, enum ColorSpace t) {
-#else
-static inline void convert_to(struct Color *color, enum ColorSpace t) {
-#endif
+
 
 	if (t == color->current_space) {
 		return;
@@ -425,6 +424,7 @@ float delta_ciede2000_diff(struct Color *sam, struct Color *ref) {
 
 #ifdef PALETTE_DEBUG
 void Color_print(struct Color *color) {
+	enum ColorSpace cur = color->current_space;
 	convert_to(color, COLOR_SRGB);
 	printf("Linear sRGB: (%f, %f, %f)\n", color->data.srgb.r,
 	       color->data.srgb.g, color->data.srgb.b);
@@ -434,5 +434,6 @@ void Color_print(struct Color *color) {
 	convert_to(color, COLOR_OKLAB);
 	printf("okLAB: (%f, %f, %f)\n", color->data.oklab.l,
 	       color->data.oklab.a, color->data.oklab.b);
+	convert_to(color, cur);
 }
 #endif

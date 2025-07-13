@@ -19,10 +19,9 @@
 /* TODO (Tess): In the Linux cache detection, check for errors for each of the
    mini query functions */
 
-/* TODO (Tess): Use booleans */
+struct system_features_t features = {false, false, false, false, {0, 0, 0, 0},
+				     0,	    0,	   0,	  false, false};
 
-struct system_features_t features = {false, false, false, {0, 0, 0, 0}, 0,
-				     0,	    0,	   false, false};
 
 #if defined(__linux__) || defined(__unix__) || defined(__poxis__)
 
@@ -115,7 +114,7 @@ static int query_file_type(const char *path) {
 static int query_file_gen(const char *path) {
 	FILE *fp;
 	char  buff[64];
-	fp = fopen(path, "r");
+	fp	  = fopen(path, "r");
 	int level = -1;
 	if (!fp) {
 		printf("Could not open %s\n", path);
@@ -138,19 +137,17 @@ static void query_cache_sizes(struct system_features_t *features) {
 	int   dc   = count_directories(base);
 
 	for (int i = 0; i < dc; ++i) {
-		char path[256];
+		char   path[256];
 		size_t ps = sizeof(path);
 		snprintf(path, ps, "%sindex%d/size", base, i);
 		int size = query_file_size(path);
-		snprintf(path, ps, "%sindex%d/shared_cpu_list", base,
-			 i);
+		snprintf(path, ps, "%sindex%d/shared_cpu_list", base, i);
 		int shared = query_file_shared(path);
 		snprintf(path, ps, "%sindex%d/type", base, i);
 		int data = query_file_type(path);
 		snprintf(path, ps, "%sindex%d/level", base, i);
 		int level = query_file_gen(path);
-		snprintf(path, ps, "%sindex%d/coherency_line_size",
-			 base, i);
+		snprintf(path, ps, "%sindex%d/coherency_line_size", base, i);
 		int line = query_file_gen(path);
 
 		if (size == -1 || shared == -1 || data == -1 || level == -1)
@@ -242,10 +239,11 @@ static void query_physical_cores(struct system_features_t *features) {
 }
 
 static void query_cpu_features(struct system_features_t *features) {
-	features->avx = features->avx2 = features->fma3 = 0;
+	features->sse2 = features->avx = features->avx2 = features->fma3 = 0;
 #if defined(__x86_64__) || defined(_M_X64)
 	uint32_t eax, ebx, ecx, edx;
 	eax = ebx = ecx = edx = 0;
+	features->sse2 = true;
 #if defined(_MSC_VER)
 	int cpu_info[4];
 	__cpuid(cpu_info, 1);

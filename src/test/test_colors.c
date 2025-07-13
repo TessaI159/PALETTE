@@ -367,6 +367,6 @@ void test_conversion_speed(void) {
 	       time_conv(convert_to, col, COLOR_OKLAB, COLOR_SRGB, RUNS));
 	printf("cielab_to_oklab took %lu cycles on average\n",
 	       time_conv(convert_to, col, COLOR_CIELAB, COLOR_OKLAB, RUNS));
-	printf("cielab_to_srgbb took %lu cycles on average\n",
+	printf("cielab_to_srgb took %lu cycles on average\n",
 	       time_conv(convert_to, col, COLOR_CIELAB, COLOR_SRGB, RUNS));
 }

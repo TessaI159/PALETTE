@@ -1,10 +1,11 @@
 #ifndef FEATURE_DETECTION_H
 #define FEATURE_DETECTION_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 struct system_features_t {
+	bool	 sse2;
 	bool	 avx;
 	bool	 avx2;
 	bool	 fma3;

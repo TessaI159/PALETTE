@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "Align.h"
 #include "Average.h"
 #include "Color.h"
 #include "FeatureDetection.h"
@@ -10,6 +11,7 @@
 #include "Video.h"
 
 /* TODO (Tess): Consider throwing GPU compute capabilities in here somewhere */
+/* TODO (Tess): KMeans might only need one thread */
 
 /*
  * High level overview:
@@ -61,7 +63,11 @@
  */
 
 #define RUNS 4194304
+#define RUNS_AVG 2048
+#define NUM_TEST_COL 5000
 extern struct system_features_t features;
+extern struct Color cielab_avg_fallback(struct Color *colors, uint16_t num_col);
+extern struct Color cielab_avg_sse2(struct Color *colors, uint16_t num_col);
 
 static inline int width_from_pixels(int pixels) {
 	return round(sqrt(pixels) * 4.0f / 3.0f);
@@ -79,7 +85,7 @@ int main(int argc, char **argv) {
 
 	Color col1 = Color_create(rand() % 255, rand() % 255, rand() % 255);
 	Color col2 = Color_create(rand() % 255, rand() % 255, rand() % 255);
-	
+
 	printf("Delta ok took %lu cycles on average.\n",
 	       time_diff(delta_ok_diff, col1, col2, RUNS));
 	printf("Delta cie76 took %lu cycles on average.\n",
@@ -88,7 +94,7 @@ int main(int argc, char **argv) {
 	       time_diff(delta_cie94_diff, col1, col2, RUNS));
 	printf("Delta ciede2000 took %lu cycles on average.\n",
 	       time_diff(delta_ciede2000_diff, col1, col2, RUNS));
-	
+
 	printf("%" PRIu64 " bytes of l1 cache\n", features.l[1]);
 	printf("%" PRIu64 " bytes of l2 cache\n", features.l[2]);
 	printf("%" PRIu64 " bytes of l3 cache\n", features.l[3]);
@@ -98,7 +104,7 @@ int main(int argc, char **argv) {
 	int	 width	= width_from_pixels(pixels);
 	int	 height = height_from_width(width);
 	printf("%" PRIu64 " bytes of l1 cache can hold ~%" PRIu64
-	       " pixels. This means that if we want each frame to be held "
+	       " colors. This means that if we want each frame to be held "
 	       "entirely in l1 cache at a 16:9 ratio, the frame must be shrunk "
 	       "to ~%dx%d\n",
 	       cache, pixels, width, height);
@@ -110,7 +116,7 @@ int main(int argc, char **argv) {
 	height = height_from_width(width);
 
 	printf("%" PRIu64 " bytes of l1 and l2 cache can hold ~%" PRIu64
-	       " pixels. This means that if we want each frame to be held "
+	       " colors. This means that if we want each frame to be held "
 	       "entirely in l1 and l2 cache at a 16:9 ratio, the frame must be "
 	       "shrunk to ~%dx%d\n",
 	       cache, pixels, width, height);
@@ -121,13 +127,31 @@ int main(int argc, char **argv) {
 	height = height_from_width(width);
 
 	printf("%" PRIu64 " bytes of l1, l2, and l3 cache can hold ~%" PRIu64
-	       " pixels. This means that if we want each frame to be held "
+	       " colors. This means that if we want each frame to be held "
 	       "entirely in l1, l2, and l3 cache at a 16:9 ratio, the frame "
 	       "must be shrunk to ~%dx%d\n",
 	       cache, pixels, width, height);
 
 	/* struct Video in_video; */
 	/* open_video_file(&in_video, "vid.webm"); */
-	cielab_avg(NULL, 0);
+	ALIGN16 struct Color test_colors[NUM_TEST_COL] = {};
+	for (size_t i = 0; i < NUM_TEST_COL; ++i) {
+		test_colors[i] =
+		    Color_create(rand() % 255, rand() % 255, rand() % 255);
+		convert_to(&test_colors[i], COLOR_CIELAB);
+	}
+
+	uint64_t avg =
+	    time_avg(cielab_avg_fallback, test_colors, NUM_TEST_COL, RUNS_AVG);
+	printf("Fallback averaging %" PRIu16
+	       " colors took %lu cycles on average, or about %.3f "
+	       "cycles per color on average.\n",
+	       NUM_TEST_COL, avg, (double)avg / (double)NUM_TEST_COL);
+	avg = time_avg(cielab_avg_sse2, test_colors, NUM_TEST_COL, RUNS_AVG);
+	printf("SSE2 averaging %" PRIu16
+	       " colors took %lu cycles on average, or about %.3f "
+	       "cycles per color on average.\n",
+	       NUM_TEST_COL, avg, (double)avg / (double)NUM_TEST_COL);
+
 	return 0;
 }

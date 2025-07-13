@@ -12,7 +12,6 @@ uint64_t time_diff(float (*func)(Color *, Color *), struct Color col1,
 	}
 
 	uint64_t tic = __rdtsc();
-
 	for (uint64_t i = 0; i < RUNS; ++i) {
 
 		func(&col1, &col2);
@@ -28,12 +27,29 @@ uint64_t time_conv(void (*func)(Color *, enum ColorSpace), Color col,
 	for (int i = 0; i < 1000; ++i) {
 		func(&col, t);
 	}
+	
 	uint64_t tic = __rdtsc();
-
 	for (uint64_t i = 0; i < RUNS; ++i) {
 
 		func(&col, t);
 		col.current_space = f;
+	}
+	uint64_t toc = __rdtsc();
+
+	return (toc - tic) / RUNS;
+}
+
+uint64_t time_avg(Color (*func)(Color *, uint16_t), Color *colors,
+		  uint16_t num_col, uint64_t RUNS) {
+	/* Warm the function up */
+	for (int i = 0; i < 1000; ++i) {
+		func(colors, num_col);
+	}
+	
+	uint64_t tic = __rdtsc();
+	for (uint64_t i = 0; i < RUNS; ++i) {
+
+		func(colors, num_col);
 	}
 	uint64_t toc = __rdtsc();
 

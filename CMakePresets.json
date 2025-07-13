@@ -29,7 +29,8 @@
             "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-		"PALETTE_BUILD_TESTS": false
+		"PALETTE_BUILD_TESTS": false,
+		"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
         }
     ]
