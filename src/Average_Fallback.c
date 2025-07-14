@@ -5,26 +5,15 @@
 #include "Color.h"
 
 
-extern void convert_to(struct Color *color, enum ColorSpace);
 
-struct Color cielab_avg_fallback(struct Color *__restrict colors,
+struct Color cielab_avg_fallback(const struct cielab_SoA *__restrict colors,
 				 uint16_t num_col) {
 	float l, a, b;
 	l = a = b = 0.0f;
 	for (size_t i = 0; i + 3 < num_col; i += 4) {
-		l += colors[i + 0].data.cielab.l;
-		l += colors[i + 1].data.cielab.l;
-		l += colors[i + 2].data.cielab.l;
-		l += colors[i + 3].data.cielab.l;
-		a += colors[i + 0].data.cielab.a;
-		a += colors[i + 1].data.cielab.a;
-		a += colors[i + 2].data.cielab.a;
-		a += colors[i + 3].data.cielab.a;
-		b += colors[i + 0].data.cielab.b;
-		b += colors[i + 1].data.cielab.b;
-		b += colors[i + 2].data.cielab.b;
-		b += colors[i + 3].data.cielab.b;
+	  l += colors->l[i];
 	}
+
 	l /= num_col;
 	a /= num_col;
 	b /= num_col;

@@ -33,6 +33,18 @@ list(FILTER SOURCES EXCLUDE REGEX "src/test/.*\\.c$")
 
 add_executable(PALETTE ${SOURCES})
 
+if (MSVC)
+    set_source_files_properties(src/Average_AVX.c PROPERTIES COMPILE_FLAGS
+      "/arch:AVX2")
+    
+else()
+    set_source_files_properties(src/Average_AVX.c PROPERTIES COMPILE_FLAGS
+      "-mavx2")
+    set_source_files_properties(src/Average_SSE3.c PROPERTIES COMPILE_FLAGS
+      "-msse3")
+endif()
+
+
 target_include_directories(PALETTE PRIVATE
   ${PROJECT_SOURCE_DIR}/src
   ${AVFORMAT_INCLUDE_DIRS}
@@ -72,8 +84,26 @@ if (PALETTE_BUILD_TESTS)
   file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS src/test/*.c)
 
   add_executable(unit_tests ${TEST_SOURCES} ${IMPL_SOURCES})
+  target_compile_options(unit_tests PRIVATE -fsanitize=address,undefined
+    -fno-omit-frame-pointer)
+  
+  target_link_options(unit_tests PRIVATE -fsanitize=address,undefined)
+
   target_compile_definitions(unity PRIVATE UNITY_INCLUDE_DOUBLE)
-  target_compile_definitions(unit_tests PRIVATE $<$<CONFIG:Debug>:PALETTE_DEBUG>)
+  target_compile_definitions(unit_tests PRIVATE
+    $<$<CONFIG:Debug>:PALETTE_DEBUG>)
+  
+  if (MSVC)
+    set_source_files_properties(src/Average_AVX.c PROPERTIES COMPILE_FLAGS
+      "/arch:AVX")
+    
+  else()
+    set_source_files_properties(src/Average_AVX.c PROPERTIES COMPILE_FLAGS
+      "-mavx")
+    set_source_files_properties(src/Average_SSE3.c PROPERTIES COMPILE_FLAGS
+      "-msse3")
+    
+  endif()
 
   target_link_libraries(unit_tests unity)
   

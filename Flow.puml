@@ -1,0 +1,105 @@
+@startuml
+start
+:Set global flags;
+:Open video for reading;
+:f = 0;
+repeat
+:Sample 10 + f evenly spaced key frames;
+:i = 0;
+repeat
+:Run KMeans with k = 2 on frame i;]
+note left
+"Run KMeans" is kind of a cop out, but whatever
+end note
+:C = 0;
+repeat
+:Run KMeans with k = 2 + C on each cluster;
+repeat while (2n_cluster_bic < n_cluster_bic ?) is (Yes) not (No)
+:k = n;
+backward: i += 1;
+note right
+Everything in this loop
+will be run via a
+thread pool for efficiency
+end note
+repeat while (i < 10 + f ?) is (Yes) not (No)
+backward: f += 5;
+note right
+This whole loop is just to find the best k for the video
+end note
+repeat while (variance(frame_ks[]) < DELTA ?) is (No) not (Yes)
+:Close video;
+:k = median(frame_ks[]);
+:Create queues;
+
+fork
+:Open video for reading;
+while (Read frame) is (not EOF)
+:Push frame copy to queue WRITE_FRAME;
+if (keyframe or >=1 second since last ?) then (Yes)
+:Downsample;
+:Generate saliency map;
+:Select pixels;
+:Allocate SoA;
+:Push SoA to queue PREPROCESSED;
+else (No)
+endif
+endwhile (EOF)
+:push kill signal to PREPROCESSED;
+:Close video;
+
+fork again
+while (true?) is (yes)
+:Pop from PREPROCESSED;
+if (Kill signal?) then (yes)
+:Push kill signal to PROCESSED;
+break
+else (no)
+:Assign pixels with KMeans++;
+:Find average squared distance;
+
+repeat
+:Assign all pixels to nearest centroid;
+:Re-calculate centroids;
+:Find new average squared distance;
+:change = |new - old|;
+:cache avg squared distance;
+repeat while (change > tolerance?)
+
+:Push to PROCESSED;
+endif
+endwhile
+
+fork again
+:i = 0;
+:Pop centroid i from PROCESSED;
+while (Pop centroid i + 1 from PROCESSED)
+if (kill signal ?) then (yes)
+:Push cached centroid to POSTPROCESSED;
+break
+else
+:Interpolate centroids;
+:Cache centroid i + 1;
+:Push centroids to queue POSTPROCESSED;
+: i += 1;
+endif
+endwhile
+
+fork again
+:Open video for writing;
+while (true?) is (yes)
+:Pop centroid from POSTPROCESSED;
+:Pop frame from WRITE_FRAME;
+if (kill signal && kill signal?) then (Yes)
+:Close video;
+break
+else
+:Draw centroid to frame;
+:Write frame to video;
+endif
+endwhile
+
+end fork
+:Destroy queues;
+stop
+@enduml

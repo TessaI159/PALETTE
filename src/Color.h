@@ -25,13 +25,19 @@ struct cieLAB {
 	float _pad;
 };
 
-struct ALIGN16 Color  {
+struct ALIGN16 Color {
 	union {
 		struct okLAB  oklab;
 		struct cieLAB cielab;
 		struct sRGB   srgb;
 	} data;
 	enum ColorSpace current_space;
+};
+
+struct cielab_SoA {
+  float *l;
+  float *a;
+  float *b;
 };
 
 /* For debugging purposes only */

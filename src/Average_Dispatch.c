@@ -3,23 +3,21 @@
 #include "FeatureDetection.h"
 
 static struct Color (*cielab_avg_intern)(
-    struct Color *colors, uint16_t num_col) = cielab_avg_fallback;
+    const struct cielab_SoA *colors, uint16_t num_col) = cielab_avg_fallback;
 void average_init() {
 	if (!features.initialized) {
 		query_features(&features);
 	}
-	if (features.avx2) {
-		cielab_avg_intern = cielab_avg_avx2;
-	} else if (features.avx) {
+	if (features.avx) {
 		cielab_avg_intern = cielab_avg_avx;
-	} else if (features.sse2) {
-		cielab_avg_intern = cielab_avg_sse2;
+	} else if (features.sse3) {
+		cielab_avg_intern = cielab_avg_sse3;
 	} else {
 		cielab_avg_intern = cielab_avg_fallback;
 	}
 }
 
-struct Color cielab_avg(struct Color *colors, uint16_t num_col) {
+struct Color cielab_avg(const struct cielab_SoA *colors, uint16_t num_col) {
 	static bool average_initialized = false;
 	if (!average_initialized) {
 		average_init();

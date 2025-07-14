@@ -4,12 +4,13 @@
 #include <stdint.h>
 
 void average_init();
+typedef struct cielab_SoA cielabSoA;
 
-struct Color cielab_avg_avx2(struct Color *colors, uint16_t num_col);
-struct Color cielab_avg_avx(struct Color *colors, uint16_t num_col);
-struct Color cielab_avg_sse2(struct Color *colors, uint16_t num_col);
-struct Color cielab_avg_fallback(struct Color *__restrict colors, uint16_t num_col);
+struct Color cielab_avg_avx2(const struct cielab_SoA *colors, uint16_t num_col);
+struct Color cielab_avg_avx(const struct cielab_SoA *colors, uint16_t num_col);
+struct Color cielab_avg_sse3(const struct cielab_SoA *colors, uint16_t num_col);
+struct Color cielab_avg_fallback(const struct cielab_SoA *__restrict colors, uint16_t num_col);
 
-struct Color cielab_avg(struct Color *colors, uint16_t num_col);
+struct Color cielab_avg(const struct cielab_SoA *colors, uint16_t num_col);
 
 #endif
