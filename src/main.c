@@ -18,7 +18,8 @@
 
 extern struct system_features_t features;
 extern struct Color cielab_avg_fallback(const struct cielab_SoA *colors, uint16_t num_col);
-extern struct Color cielab_avg_sse3(const struct cielab_SoA *colors, uint16_t num_col);
+extern struct Color cielab_avg_sse3(const struct cielab_SoA *colors,
+				    uint16_t		     num_col);
 
 static inline int width_from_pixels(int pixels) {
 	return round(sqrt(pixels) * 4.0f / 3.0f);
@@ -85,7 +86,7 @@ int main(int argc, char **argv) {
 
 	/* struct Video in_video; */
 	/* open_video_file(&in_video, "vid.webm"); */
-	ALIGN16 struct Color test_colors[NUM_TEST_COL] = {};
+	struct Color test_colors[NUM_TEST_COL] = {};
 	for (size_t i = 0; i < NUM_TEST_COL; ++i) {
 		test_colors[i] =
 		    Color_create(rand() % 255, rand() % 255, rand() % 255);

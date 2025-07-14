@@ -25,7 +25,7 @@ struct cieLAB {
 	float _pad;
 };
 
-struct ALIGN16 Color {
+struct Color {
 	union {
 		struct okLAB  oklab;
 		struct cieLAB cielab;
@@ -35,6 +35,12 @@ struct ALIGN16 Color {
 };
 
 struct cielab_SoA {
+  float *l;
+  float *a;
+  float *b;
+};
+
+struct oklab_SoA {
   float *l;
   float *a;
   float *b;
