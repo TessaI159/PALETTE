@@ -18,6 +18,7 @@
 		"PALETTE_BUILD_TESTS": true,
 		"CMAKE_C_FLAGS_DEBUG": "-fsanitize=address,undefined -fno-omit-frame-pointer",
 		"CMAKE_EXE_LINKER_FLAGS_DEBUG": "-fsanitize=address,undefined"
+		
 
 		
             }

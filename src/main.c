@@ -11,63 +11,14 @@
 #include "Video.h"
 
 /* TODO (Tess): Consider throwing GPU compute capabilities in here somewhere */
-/* TODO (Tess): KMeans might only need one thread */
 
-/*
- * High level overview:
- * There are three queues, and four threads.
- * The first queue contains frames passed in from FFMPEG
- * FFMPEG will be picky about what frames it queues. If:
- * The frame is a key frame
- * It has been >=1 second (in video time) since the last frame
- * The first thread will pull from this queue, and perform pre-processing
- *
- * Pre-processing consists of down-sampling, generating a saliency map, and
- * picking 5000 or so pixels through a stochastic process using the salience of
- * each pixel as the weight.
- *
- * The first thread then queues those 5000 pixels
- *
- * The second and third threads pick up the stream of pixels from the queue, and
- * run kmeans algorithm on them. This way, the kmeans algorithm does not need
- * to take weights into account.
- *
- * TODO (Tess): K might be picked via sillhouette scores (?) It would be very
- * hard to deal with k being inconsistent accross frames. Although, I could just
- * interpolate sizes from 0 -> size or size -> 0, but how would the color be
- * interpolated?
- *
- * The second and third threads queue centroids
- * TODO (Tess): How will order be taken care of here? Will threads 2 and 3 just
- * throw things into the queue willy-nilly and force the third thread to search
- * the queue until it finds the right partner frame? Or will we hang thread 2/3
- * until the latest centroid has the latest id?
- *
- * The third thread takes pairs of centroids and interpolates the colors and
- * percentages over n seconds of video, where n is frame_n.pts - frame_n-1.pts
- *
- * The third thread will then constanly stream interpolation calculated
- * centroids to disk. For instance, if we have CFR of 24, then for each pair of
- * centroids, the third thread will create 22 and output 24 centroids.
- *
- * Close the video stream.
- *
- * After this process is complete, we will open the video again, but this time
- * for a very quick pass. We will decode frame -> add dominant colors to video
- * -> encode frame -> write to disk -> Delete intermediary file.
- *
- *
- * Goal: process 60 frames per second, minimum. ie if the video is 3600 frames
- * long, the whole process should take about 1 minute, INCLUDING WRITING THE NEW
- * VIDEO TO DISK.
- */
+#define RUNS pow(2, 22)
+#define RUNS_AVG pow(2, 15)
+#define NUM_TEST_COL 10000
 
-#define RUNS 4194304
-#define RUNS_AVG 2048
-#define NUM_TEST_COL 5000
 extern struct system_features_t features;
-extern struct Color cielab_avg_fallback(struct Color *colors, uint16_t num_col);
-extern struct Color cielab_avg_sse2(struct Color *colors, uint16_t num_col);
+extern struct Color cielab_avg_fallback(const struct cielab_SoA *colors, uint16_t num_col);
+extern struct Color cielab_avg_sse3(const struct cielab_SoA *colors, uint16_t num_col);
 
 static inline int width_from_pixels(int pixels) {
 	return round(sqrt(pixels) * 4.0f / 3.0f);
@@ -87,13 +38,13 @@ int main(int argc, char **argv) {
 	Color col2 = Color_create(rand() % 255, rand() % 255, rand() % 255);
 
 	printf("Delta ok took %lu cycles on average.\n",
-	       time_diff(delta_ok_diff, col1, col2, RUNS));
+	       time_diff(delta_ok_diff, &col1, &col2, RUNS));
 	printf("Delta cie76 took %lu cycles on average.\n",
-	       time_diff(delta_cie76_diff, col1, col2, RUNS));
+	       time_diff(delta_cie76_diff, &col1, &col2, RUNS));
 	printf("Delta cie94 took %lu cycles on average.\n",
-	       time_diff(delta_cie94_diff, col1, col2, RUNS));
+	       time_diff(delta_cie94_diff, &col1, &col2, RUNS));
 	printf("Delta ciede2000 took %lu cycles on average.\n",
-	       time_diff(delta_ciede2000_diff, col1, col2, RUNS));
+	       time_diff(delta_ciede2000_diff, &col1, &col2, RUNS));
 
 	printf("%" PRIu64 " bytes of l1 cache\n", features.l[1]);
 	printf("%" PRIu64 " bytes of l2 cache\n", features.l[2]);
@@ -140,18 +91,31 @@ int main(int argc, char **argv) {
 		    Color_create(rand() % 255, rand() % 255, rand() % 255);
 		convert_to(&test_colors[i], COLOR_CIELAB);
 	}
-
+	cielab_SoA soa32;
+	soa32.l = aligned_malloc(32, NUM_TEST_COL * sizeof(float));
+	soa32.a = aligned_malloc(32, NUM_TEST_COL * sizeof(float));
+	soa32.b = aligned_malloc(32, NUM_TEST_COL * sizeof(float));
+	
 	uint64_t avg =
-	    time_avg(cielab_avg_fallback, test_colors, NUM_TEST_COL, RUNS_AVG);
+	    time_avg(cielab_avg_fallback, &soa32, NUM_TEST_COL, RUNS_AVG);
 	printf("Fallback averaging %" PRIu16
 	       " colors took %lu cycles on average, or about %.3f "
 	       "cycles per color on average.\n",
 	       NUM_TEST_COL, avg, (double)avg / (double)NUM_TEST_COL);
-	avg = time_avg(cielab_avg_sse2, test_colors, NUM_TEST_COL, RUNS_AVG);
-	printf("SSE2 averaging %" PRIu16
+	avg = time_avg(cielab_avg_sse3, &soa32, NUM_TEST_COL, RUNS_AVG);
+	printf("SSE3 averaging %" PRIu16
 	       " colors took %lu cycles on average, or about %.3f "
 	       "cycles per color on average.\n",
 	       NUM_TEST_COL, avg, (double)avg / (double)NUM_TEST_COL);
+	avg = time_avg(cielab_avg_avx, &soa32, NUM_TEST_COL, RUNS_AVG);
+	printf("AVX averaging %" PRIu16
+	       " colors took %lu cycles on average, or about %.3f "
+	       "cycles per color on average.\n",
+	       NUM_TEST_COL, avg, (double)avg / (double)NUM_TEST_COL);
+	
+	aligned_free(soa32.l);
+	aligned_free(soa32.a);
+	aligned_free(soa32.b);
 
 	return 0;
 }
