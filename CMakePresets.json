@@ -7,32 +7,57 @@
     },
     "configurePresets": [
         {
-            "name": "debug",
-            "displayName": "Debug",
-	    "description": "Debug build with unit tests enabled",
-            "binaryDir": "${sourceDir}/build_debug",
+            "name": "linux-debug",
+            "displayName": "Linux debug",
+	    "description": "Linux debug build with unit tests enabled",
+            "binaryDir": "${sourceDir}/build_linux_debug",
             "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
 		"PALETTE_BUILD_TESTS": true,
 		"CMAKE_C_FLAGS_DEBUG": "-fsanitize=address,undefined -fno-omit-frame-pointer",
-		"CMAKE_EXE_LINKER_FLAGS_DEBUG": "-fsanitize=address,undefined"
-		
-
-		
+		"CMAKE_EXE_LINKER_FLAGS_DEBUG": "-fsanitize=address,undefined"		
             }
         },
         {
-            "name": "release",
-            "displayName": "Release",
-            "binaryDir": "${sourceDir}/build_release",
+            "name": "linux-release",
+            "displayName": "Linux release",
+	    "description": "Linux release build",
+            "binaryDir": "${sourceDir}/build_linux_release",
             "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
 		"PALETTE_BUILD_TESTS": false,
 		"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
-        }
+        },
+	{
+	    "name": "windows-release",
+	    "displayName": "Windows release",
+	    "description": "Windows release build",
+	    "binaryDir" : "${sourceDir}/build_windows_release",
+	    "generator": "Ninja",
+	    "toolchainFile": "${sourceDir}/cmake/toolchain-mingw64.cmake",
+	    "cacheVariables": {
+		"CMAKE_BUILD_TYPE": "Release",
+		"PALETTE_BUILD_TESTS": false
+	    }
+	}
+    ],
+    "buildPresets": [
+	{
+	    "name": "build-linux-debug",
+	    "configurePreset": "linux-debug"
+	},
+	{
+	    "name": "build-linux-release",
+	    "configurePreset": "linux-release"
+	},
+	{
+	    "name": "build-windows-release",
+	    "configurePreset": "windows-release"
+	}
     ]
 }
+
