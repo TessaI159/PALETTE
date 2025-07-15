@@ -7,4 +7,4 @@ build_release/
 src/.dir-locals.el
 compile_commands.json
 src/compile_commands.json
-
+*.puml
