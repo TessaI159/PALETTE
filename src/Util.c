@@ -41,8 +41,24 @@ uint64_t time_conv(void (*func)(Color *, enum ColorSpace), Color *col,
 	return (toc - tic) / RUNS;
 }
 
-uint64_t time_avg(Color (*func)(const cielab_SoA *, uint16_t),
+uint64_t time_avg_cie(Color (*func)(const cielab_SoA *, uint16_t),
 		  cielab_SoA *colors, uint16_t num_col, uint64_t RUNS) {
+	/* Warm the function up */
+	for (int i = 0; i < 1000; ++i) {
+		func(colors, num_col);
+	}
+
+	uint64_t tic = __rdtsc();
+	for (uint64_t i = 0; i < RUNS; ++i) {
+		func(colors, num_col);
+	}
+	uint64_t toc = __rdtsc();
+
+	return (toc - tic) / RUNS;
+}
+
+uint64_t time_avg_ok(Color (*func)(const oklab_SoA *, uint16_t),
+		  oklab_SoA *colors, uint16_t num_col, uint64_t RUNS) {
 	/* Warm the function up */
 	for (int i = 0; i < 1000; ++i) {
 		func(colors, num_col);

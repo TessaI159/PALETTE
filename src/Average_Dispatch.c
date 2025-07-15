@@ -37,13 +37,29 @@ void average_init() {
 		query_features(&features);
 	}
 	if (features.avx) {
-		cielab_avg_intern = cielab_avg_avx;
-		oklab_avg_intern  = oklab_avg_avx;
-	} else if (features.sse3) {
-		cielab_avg_intern = cielab_avg_sse3;
-		oklab_avg_intern  = oklab_avg_sse3;
+		if (global_flags.chroma_average) {
+			cielab_avg_intern = cielab_avg_avx_cw;
+			oklab_avg_intern  = oklab_avg_avx_cw;
+		} else {
+			cielab_avg_intern = cielab_avg_avx;
+			oklab_avg_intern  = oklab_avg_avx;
+		}
+
+	} else if (features.sse) {
+		if (global_flags.chroma_average) {
+			cielab_avg_intern = cielab_avg_sse_cw;
+			oklab_avg_intern  = oklab_avg_sse_cw;
+		} else {
+			cielab_avg_intern = cielab_avg_sse;
+			oklab_avg_intern  = oklab_avg_sse;
+		}
 	} else {
-		cielab_avg_intern = cielab_avg_fallback;
-		oklab_avg_intern  = oklab_avg_fallback;
+		if (global_flags.chroma_average) {
+			cielab_avg_intern = cielab_avg_fallback_cw;
+			oklab_avg_intern  = oklab_avg_fallback_cw;
+		} else {
+			cielab_avg_intern = cielab_avg_fallback;
+			oklab_avg_intern  = oklab_avg_fallback;
+		}
 	}
 }

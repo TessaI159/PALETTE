@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 struct system_features_t {
-	bool	 sse3;
+	bool	 sse;
 	bool	 avx;
 	bool	 fma3;
 	uint64_t l[4];
