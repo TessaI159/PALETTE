@@ -2,7 +2,6 @@
 #define COLOR_H
 
 #include <stdint.h>
-#include "Align.h"
 
 enum ColorSpace { COLOR_SRGB, COLOR_OKLAB, COLOR_CIELAB };
 
