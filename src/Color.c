@@ -6,11 +6,6 @@
 
 #include "Color.h"
 
-#ifdef PALETTE_DEBUG
-#include "test_shared.h"
-#endif
-
-#define COLORSPACE_COUNT 3
 #define SQUARE(x) ((x) * (x))
 #define CUBE(x) ((x) * (x) * (x))
 #define SECOND_SURSOLID(x) ((x) * (x) * (x) * (x) * (x) * (x) * (x))
@@ -22,13 +17,7 @@ static const double X2	  = 0.95047;
 static const double Y2	  = 1.000;
 static const double Z2	  = 1.08883;
 static const double DELTA = (6.0 / 29.0) * (6.0 / 29.0) * (6.0 / 29.0);
-#ifndef M_PI
-static const double M_PI = 3.14159265358979323846;
-extern E2000_diff   e2000_diffs_calc[NUM_E2000_PAIR];
-#endif
 
-/* TODO (Tess): Allow creation of colors with oklab */
-/* TODO (Tess): oklab to srgb conversion */
 
 static inline float linearize(float channel) {
 	return (channel > 0.04045f) ? powf((channel + 0.055f) / 1.055f, 2.4f)
@@ -42,46 +31,6 @@ static inline float gamma_correct(float channel) {
 		   : 12.92f * channel;
 }
 
-struct Color Color_create(const float r, const float g, const float b) {
-	struct Color color = {0};
-	if (r < 0.0f || r > 255.0f || g < 0.0f || g > 255.0f || b < 0.0f ||
-	    b > 255.0f) {
-		fprintf(stderr, "rgb values out of range.\n");
-	}
-
-	color.data.srgb.r   = linearize(r / 255.0f);
-	color.data.srgb.g   = linearize(g / 255.0f);
-	color.data.srgb.b   = linearize(b / 255.0f);
-	color.current_space = COLOR_SRGB;
-	return color;
-}
-
-struct Color Color_create_norm(const float r, const float g, const float b) {
-	struct Color color;
-	color.data.srgb.r   = linearize(r);
-	color.data.srgb.g   = linearize(g);
-	color.data.srgb.b   = linearize(b);
-	color.current_space = COLOR_SRGB;
-	return color;
-}
-
-struct Color Color_create_cielab(const float l, const float a, const float b) {
-	struct Color color;
-	color.data.cielab.l = l;
-	color.data.cielab.a = a;
-	color.data.cielab.b = b;
-	color.current_space = COLOR_CIELAB;
-	return color;
-}
-
-struct Color Color_create_oklab(const float l, const float a, const float b) {
-	struct Color color;
-	color.data.oklab.l  = l;
-	color.data.cielab.a = a;
-	color.data.cielab.b = b;
-	color.current_space = COLOR_CIELAB;
-	return color;
-}
 
 static inline void convert_cielab_to_srgb(struct Color *color) {
 	const struct cieLAB lab = color->data.cielab;
@@ -161,11 +110,8 @@ static void convert_srgb_to_cielab(struct Color *color) {
 	color->current_space = COLOR_CIELAB;
 }
 
-#ifdef PALETTE_DEBUG
-void convert_srgb_to_oklab(struct Color *color) {
-#else
+
 static void convert_srgb_to_oklab(struct Color *color) {
-#endif
 	const struct sRGB srgb = color->data.srgb;
 
 	double l = fma(0.4122214708, srgb.r,
@@ -189,59 +135,22 @@ static void convert_srgb_to_oklab(struct Color *color) {
 	color->current_space = COLOR_OKLAB;
 }
 
-static inline void convert_cielab_to_oklab(struct Color *color) {
-	convert_cielab_to_srgb(color);
-	convert_srgb_to_oklab(color);
-}
 
-static inline void convert_oklab_to_cielab(struct Color *color) {
-	convert_oklab_to_srgb(color);
-	convert_srgb_to_cielab(color);
-}
-
-typedef void (*convert_fn)(struct Color *);
-
-convert_fn conversion_table[COLORSPACE_COUNT][COLORSPACE_COUNT] = {
-    [COLOR_SRGB]   = {[COLOR_SRGB]   = NULL,
-		      [COLOR_CIELAB] = convert_srgb_to_cielab,
-		      [COLOR_OKLAB]  = convert_srgb_to_oklab},
-    [COLOR_CIELAB] = {[COLOR_CIELAB] = NULL,
-		      [COLOR_OKLAB]  = convert_cielab_to_oklab,
-		      [COLOR_SRGB]   = convert_cielab_to_srgb},
-    [COLOR_OKLAB]  = {[COLOR_OKLAB]  = NULL,
-		      [COLOR_SRGB]   = convert_oklab_to_srgb,
-		      [COLOR_CIELAB] = convert_oklab_to_cielab}};
-
-
-void convert_to(struct Color *color, enum ColorSpace t) {
-
-
-	if (t == color->current_space) {
-		return;
-	}
-
-	convert_fn fn = conversion_table[color->current_space][t];
-	if (fn) {
-		fn(color);
-	} else {
-		printf("Unknown color conversion.\n");
-	}
-}
 
 /* Color difference functions begin here */
-static inline float delta_ok_diff_fast(const struct okLAB *sam,
+static inline float delta_ok_diff(const struct okLAB *sam,
 				       const struct okLAB *ref) {
 	return sqrtf(SQUARE(sam->l - ref->l) + SQUARE(sam->a - ref->a) +
 		     SQUARE(sam->b - ref->b));
 }
 
-static inline float delta_cie76_diff_fast(const struct cieLAB *sam,
+static inline float delta_cie76_diff(const struct cieLAB *sam,
 					  const struct cieLAB *ref) {
 	return sqrtf(SQUARE(sam->l - ref->l) + SQUARE(sam->a - ref->a) +
 		     SQUARE(sam->b - ref->b));
 }
 
-static inline float delta_cie94_diff_fast(const struct cieLAB *sam,
+static inline float delta_cie94_diff(const struct cieLAB *sam,
 					  const struct cieLAB *ref) {
 	struct cieLAB s = *sam;
 	struct cieLAB r = *ref;
@@ -270,12 +179,9 @@ static inline float delta_cie94_diff_fast(const struct cieLAB *sam,
 	return sqrt(SQUARE(term_L) + SQUARE(term_C) + SQUARE(term_H));
 }
 
-#ifdef PALETTE_DEBUG
-float delta_ciede2000_diff_fast(E2000_diff *diff) {
-#else
-static inline float delta_ciede2000_diff_fast(const struct cieLAB *sam,
+
+static inline float delta_ciede2000_diff(const struct cieLAB *sam,
 					      const struct cieLAB *ref) {
-#endif
 
 	const double kl = 1;
 	const double kh = 1;
@@ -366,74 +272,6 @@ static inline float delta_ciede2000_diff_fast(const struct cieLAB *sam,
 
 	const double ret = sqrt(SQUARE(terml) + SQUARE(termc) + SQUARE(termh) +
 				rt * termc * termh);
-#ifdef PALETTE_DEBUG
-	diff->ap[0] = a1p;
-	diff->ap[1] = a2p;
-	diff->cp[0] = c1p;
-	diff->cp[1] = c2p;
-	diff->hp[0] = h1p;
-	diff->hp[1] = h2p;
-
-	diff->avghp = avghp;
-	diff->g	    = g;
-	diff->t	    = t;
-	diff->sl    = sl;
-	diff->sc    = sc;
-	diff->sh    = sh;
-	diff->rt    = rt;
-	diff->diff  = ret;
-#endif
 
 	return ret;
 }
-
-float delta_ok_diff(struct Color *sam, struct Color *ref) {
-	convert_to(sam, COLOR_OKLAB);
-	convert_to(ref, COLOR_OKLAB);
-	return delta_ok_diff_fast(&sam->data.oklab, &ref->data.oklab);
-}
-
-float delta_cie76_diff(struct Color *sam, struct Color *ref) {
-	convert_to(sam, COLOR_CIELAB);
-	convert_to(ref, COLOR_CIELAB);
-	return delta_cie76_diff_fast(&sam->data.cielab, &ref->data.cielab);
-}
-
-float delta_cie94_diff(struct Color *sam, struct Color *ref) {
-	convert_to(sam, COLOR_CIELAB);
-	convert_to(ref, COLOR_CIELAB);
-	return delta_cie94_diff_fast(&sam->data.cielab, &ref->data.cielab);
-}
-
-float delta_ciede2000_diff(struct Color *sam, struct Color *ref) {
-	convert_to(sam, COLOR_CIELAB);
-	convert_to(ref, COLOR_CIELAB);
-#ifdef PALETTE_DEBUG
-	struct E2000_diff diff;
-	diff.l[0] = sam->data.cielab.l;
-	diff.a[0] = sam->data.cielab.a;
-	diff.b[0] = sam->data.cielab.b;
-	diff.l[1] = ref->data.cielab.l;
-	diff.a[1] = ref->data.cielab.a;
-	diff.b[1] = ref->data.cielab.b;
-	return delta_ciede2000_diff_fast(&diff);
-#else
-	return delta_ciede2000_diff_fast(&sam->data.cielab, &ref->data.cielab);
-#endif
-}
-
-#ifdef PALETTE_DEBUG
-void Color_print(struct Color *color) {
-	enum ColorSpace cur = color->current_space;
-	convert_to(color, COLOR_SRGB);
-	printf("Linear sRGB: (%f, %f, %f)\n", color->data.srgb.r,
-	       color->data.srgb.g, color->data.srgb.b);
-	convert_to(color, COLOR_CIELAB);
-	printf("cieLAB: (%f, %f, %f)\n", color->data.cielab.l,
-	       color->data.cielab.a, color->data.cielab.b);
-	convert_to(color, COLOR_OKLAB);
-	printf("okLAB: (%f, %f, %f)\n", color->data.oklab.l,
-	       color->data.oklab.a, color->data.oklab.b);
-	convert_to(color, cur);
-}
-#endif

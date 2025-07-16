@@ -7,44 +7,23 @@
 #include "FeatureDetection.h"
 #include "Parameters.h"
 
-static struct Color (*cielab_avg_intern)(
-    const struct cielab_SoA *__restrict colors,
-    uint16_t num_col) = cielab_avg_fallback;
-
-static struct Color (*oklab_avg_intern)(
-    const struct oklab_SoA *__restrict colors,
-    uint16_t num_col) = oklab_avg_fallback;
+static struct Color (*color_avg_intern)(const struct Color);
 
 static inline void average_init() {
+	enum InstSet inst;
+
 	if (!features.initialized) {
 		query_features(&features);
 	}
-	if (features.avx) {
-		if (global_parameters.chroma_weight) {
-			cielab_avg_intern = cielab_avg_avx_cw;
-			oklab_avg_intern  = oklab_avg_avx_cw;
-		} else {
-			cielab_avg_intern = cielab_avg_avx;
-			oklab_avg_intern  = oklab_avg_avx;
-		}
 
+	if (features.avx) {
+	  inst = AVX;
 	} else if (features.sse) {
-		if (global_parameters.chroma_weight) {
-			cielab_avg_intern = cielab_avg_sse_cw;
-			oklab_avg_intern  = oklab_avg_sse_cw;
-		} else {
-			cielab_avg_intern = cielab_avg_sse;
-			oklab_avg_intern  = oklab_avg_sse;
-		}
+	  inst = SSE;
 	} else {
-		if (global_parameters.chroma_weight) {
-			cielab_avg_intern = cielab_avg_fallback_cw;
-			oklab_avg_intern  = oklab_avg_fallback_cw;
-		} else {
-			cielab_avg_intern = cielab_avg_fallback;
-			oklab_avg_intern  = oklab_avg_fallback;
-		}
+	  inst = FB;
 	}
+	color_avg_intern = avg_table[inst][g_params.space][g_params.cw];
 }
 
 static inline void check_initialized() {
@@ -55,19 +34,7 @@ static inline void check_initialized() {
 	}
 }
 
-struct Color color_avg(const void *__restrict colors, uint16_t num_col) {
+struct Color color_avg(const struct Color colors) {
 	check_initialized();
-	switch (global_parameters.working_colorspace) {
-	case WORKING_CIELAB:
-		return cielab_avg_intern((const struct cielab_SoA *)colors,
-					 num_col);
-		break;
-	case WORKING_OKLAB:
-		return oklab_avg_intern((const struct oklab_SoA *)colors,
-					num_col);
-		break;
-	default:
-		fprintf(stderr, "Unknown working color space");
-		exit(1);
-	}
+	return color_avg_intern(colors);
 }
