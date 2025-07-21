@@ -6,3 +6,4 @@ https://en.wikipedia.org/wiki/Standard_illuminant#Illuminant_series_D
 https://en.wikipedia.org/wiki/CIE_1931_color_space#CIE_standard_observer
 https://hajim.rochester.edu/ece/sites/gsharma/papers/CIEDE2000CRNAFeb05.pdf
 https://ottverse.com/i-p-b-frames-idr-keyframes-differences-usecases/
+https://www.youtube.com/watch?v=j29rVHCpRUY&t=411s
