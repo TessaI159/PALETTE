@@ -1,5 +1,4 @@
 #ifdef PALETTE_DEBUG
-
 #include <assert.h>
 #endif
 #include <math.h>
@@ -10,15 +9,16 @@
 #include <pmmintrin.h>
 #endif
 
+#include "Align.h"
 #include "Color.h"
 
 #define SQUARE(x) ((x) * (x))
-
-struct Color cielab_avg_sse(const struct cielab_SoA *__restrict colors,
-			     uint16_t num_col) {
-	__m128 sum_l1 = _mm_setzero_ps();
-	__m128 sum_a1 = _mm_setzero_ps();
-	__m128 sum_b1 = _mm_setzero_ps();
+void cielab_avg_sse(const struct Color colors, struct Color cents,
+		    uint8_t which_cent) {
+	uint16_t num_col = colors.num;
+	__m128	 sum_l1	 = _mm_setzero_ps();
+	__m128	 sum_a1	 = _mm_setzero_ps();
+	__m128	 sum_b1	 = _mm_setzero_ps();
 
 	__m128 sum_l2 = _mm_setzero_ps();
 	__m128 sum_a2 = _mm_setzero_ps();
@@ -35,36 +35,36 @@ struct Color cielab_avg_sse(const struct cielab_SoA *__restrict colors,
 	size_t i = 0;
 	for (; i + 15 < num_col; i += 16) {
 #ifdef PALETTE_DEBUG
-		assert(((uintptr_t)&colors->l[i + 0] % 16) == 0);
-		assert(((uintptr_t)&colors->a[i + 0] % 16) == 0);
-		assert(((uintptr_t)&colors->b[i + 0] % 16) == 0);
+		assert(((uintptr_t)colors.alpha[i + 0] % 16) == 0);
+		assert(((uintptr_t)colors.beta[i + 0] % 16) == 0);
+		assert(((uintptr_t)colors.gamma[i + 0] % 16) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 4] % 16) == 0);
-		assert(((uintptr_t)&colors->a[i + 4] % 16) == 0);
-		assert(((uintptr_t)&colors->b[i + 4] % 16) == 0);
+		assert(((uintptr_t)colors.alpha[i + 4] % 16) == 0);
+		assert(((uintptr_t)colors.beta[i + 4] % 16) == 0);
+		assert(((uintptr_t)colors.gamma[i + 4] % 16) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 8] % 16) == 0);
-		assert(((uintptr_t)&colors->a[i + 8] % 16) == 0);
-		assert(((uintptr_t)&colors->b[i + 8] % 16) == 0);
+		assert(((uintptr_t)colors.alpha[i + 8] % 16) == 0);
+		assert(((uintptr_t)colors.beta[i + 8] % 16) == 0);
+		assert(((uintptr_t)colors.gamma[i + 8] % 16) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 12] % 16) == 0);
-		assert(((uintptr_t)&colors->a[i + 12] % 16) == 0);
-		assert(((uintptr_t)&colors->b[i + 12] % 16) == 0);
+		assert(((uintptr_t)colors.alpha[i + 12] % 16) == 0);
+		assert(((uintptr_t)colors.beta[i + 12] % 16) == 0);
+		assert(((uintptr_t)colors.gamma[i + 12] % 16) == 0);
 #endif
-		__m128 l1 = _mm_load_ps(&colors->l[i + 0]);
-		__m128 l2 = _mm_load_ps(&colors->l[i + 4]);
-		__m128 l3 = _mm_load_ps(&colors->l[i + 8]);
-		__m128 l4 = _mm_load_ps(&colors->l[i + 12]);
+		__m128 l1 = _mm_load_ps((float *)&colors.alpha[i + 0]);
+		__m128 l2 = _mm_load_ps(&colors.alpha[i + 4]);
+		__m128 l3 = _mm_load_ps(&colors.alpha[i + 8]);
+		__m128 l4 = _mm_load_ps(&colors.alpha[i + 12]);
 
-		__m128 a1 = _mm_load_ps(&colors->a[i + 0]);
-		__m128 a2 = _mm_load_ps(&colors->a[i + 4]);
-		__m128 a3 = _mm_load_ps(&colors->a[i + 8]);
-		__m128 a4 = _mm_load_ps(&colors->a[i + 12]);
+		__m128 a1 = _mm_load_ps(&colors.beta[i + 0]);
+		__m128 a2 = _mm_load_ps(&colors.beta[i + 4]);
+		__m128 a3 = _mm_load_ps(&colors.beta[i + 8]);
+		__m128 a4 = _mm_load_ps(&colors.beta[i + 12]);
 
-		__m128 b1 = _mm_load_ps(&colors->b[i + 0]);
-		__m128 b2 = _mm_load_ps(&colors->b[i + 4]);
-		__m128 b3 = _mm_load_ps(&colors->b[i + 8]);
-		__m128 b4 = _mm_load_ps(&colors->b[i + 12]);
+		__m128 b1 = _mm_load_ps(&colors.gamma[i + 0]);
+		__m128 b2 = _mm_load_ps(&colors.gamma[i + 4]);
+		__m128 b3 = _mm_load_ps(&colors.gamma[i + 8]);
+		__m128 b4 = _mm_load_ps(&colors.gamma[i + 12]);
 
 		sum_l1 = _mm_add_ps(sum_l1, l1);
 		sum_l2 = _mm_add_ps(sum_l2, l2);
@@ -102,21 +102,23 @@ struct Color cielab_avg_sse(const struct cielab_SoA *__restrict colors,
 	float b = b_vec[0] + b_vec[1] + b_vec[2] + b_vec[3];
 
 	for (; i < num_col; ++i) {
-		l += colors->l[i];
-		a += colors->a[i];
-		b += colors->b[i];
+		l += colors.alpha[i];
+		a += colors.beta[i];
+		b += colors.gamma[i];
 	}
 
-	float scale = 1.0f / num_col;
-
-	return Color_create_cielab(l * scale, a * scale, b * scale);
+	float scale		= 1.0f / num_col;
+	cents.alpha[which_cent] = l * scale;
+	cents.beta[which_cent]	= a * scale;
+	cents.gamma[which_cent] = b * scale;
 }
 
-struct Color cielab_avg_sse_cw(const struct cielab_SoA *__restrict colors,
-				uint16_t num_col) {
-	__m128 sum_l1 = _mm_setzero_ps();
-	__m128 sum_a1 = _mm_setzero_ps();
-	__m128 sum_b1 = _mm_setzero_ps();
+void cielab_avg_sse_cw(const struct Color colors, struct Color cents,
+		       uint8_t which_cent) {
+	uint16_t num_col = colors.num;
+	__m128	 sum_l1	 = _mm_setzero_ps();
+	__m128	 sum_a1	 = _mm_setzero_ps();
+	__m128	 sum_b1	 = _mm_setzero_ps();
 
 	__m128 sum_l2 = _mm_setzero_ps();
 	__m128 sum_a2 = _mm_setzero_ps();
@@ -135,36 +137,36 @@ struct Color cielab_avg_sse_cw(const struct cielab_SoA *__restrict colors,
 	size_t i = 0;
 	for (; i + 15 < num_col; i += 16) {
 #ifdef PALETTE_DEBUG
-		assert(((uintptr_t)&colors->l[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors.alpha[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors.beta[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors.gamma[i + 0] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 4] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 4] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors.alpha[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors.beta[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors.gamma[i + 4] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors.alpha[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors.beta[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors.gamma[i + 8] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 12] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 12] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors.alpha[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors.beta[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors.gamma[i + 12] % 32) == 0);
 #endif
-		__m128 l1 = _mm_load_ps(&colors->l[i + 0]);
-		__m128 l2 = _mm_load_ps(&colors->l[i + 4]);
-		__m128 l3 = _mm_load_ps(&colors->l[i + 8]);
-		__m128 l4 = _mm_load_ps(&colors->l[i + 12]);
+		__m128 l1 = _mm_load_ps(&colors.alpha[i + 0]);
+		__m128 l2 = _mm_load_ps(&colors.alpha[i + 4]);
+		__m128 l3 = _mm_load_ps(&colors.alpha[i + 8]);
+		__m128 l4 = _mm_load_ps(&colors.alpha[i + 12]);
 
-		__m128 a1 = _mm_load_ps(&colors->a[i + 0]);
-		__m128 a2 = _mm_load_ps(&colors->a[i + 4]);
-		__m128 a3 = _mm_load_ps(&colors->a[i + 8]);
-		__m128 a4 = _mm_load_ps(&colors->a[i + 12]);
+		__m128 a1 = _mm_load_ps(&colors.beta[i + 0]);
+		__m128 a2 = _mm_load_ps(&colors.beta[i + 4]);
+		__m128 a3 = _mm_load_ps(&colors.beta[i + 8]);
+		__m128 a4 = _mm_load_ps(&colors.beta[i + 12]);
 
-		__m128 b1 = _mm_load_ps(&colors->b[i + 0]);
-		__m128 b2 = _mm_load_ps(&colors->b[i + 4]);
-		__m128 b3 = _mm_load_ps(&colors->b[i + 8]);
-		__m128 b4 = _mm_load_ps(&colors->b[i + 12]);
+		__m128 b1 = _mm_load_ps(&colors.gamma[i + 0]);
+		__m128 b2 = _mm_load_ps(&colors.gamma[i + 4]);
+		__m128 b3 = _mm_load_ps(&colors.gamma[i + 8]);
+		__m128 b4 = _mm_load_ps(&colors.gamma[i + 12]);
 
 		__m128 chroma1 = _mm_sqrt_ps(
 		    _mm_add_ps(_mm_mul_ps(a1, a1), _mm_mul_ps(b1, b1)));
@@ -194,7 +196,6 @@ struct Color cielab_avg_sse_cw(const struct cielab_SoA *__restrict colors,
 					       _mm_add_ps(chroma3, chroma4));
 
 		sum_w = _mm_add_ps(sum_w, chroma_sum);
-		
 	}
 
 	__m128 sum_l =
@@ -222,10 +223,10 @@ struct Color cielab_avg_sse_cw(const struct cielab_SoA *__restrict colors,
 
 	for (; i < num_col; ++i) {
 		float chroma =
-		    sqrtf(SQUARE(colors->a[i]) + SQUARE(colors->b[i]));
-		l += colors->l[i];
-		a += colors->a[i] * chroma;
-		b += colors->b[i] * chroma;
+		    sqrtf(SQUARE(colors.beta[i]) + SQUARE(colors.gamma[i]));
+		l += colors.alpha[i];
+		a += colors.beta[i] * chroma;
+		b += colors.gamma[i] * chroma;
 		w += chroma;
 	}
 
@@ -238,14 +239,17 @@ struct Color cielab_avg_sse_cw(const struct cielab_SoA *__restrict colors,
 		b /= w;
 	}
 
-	return Color_create_cielab(l, a, b);
+	cents.alpha[which_cent] = l / num_col;
+	cents.beta[which_cent]	= a;
+	cents.gamma[which_cent] = b;
 }
 
-struct Color oklab_avg_sse(const struct oklab_SoA *__restrict colors,
-			      uint16_t num_col) {
-	__m128 sum_l1 = _mm_setzero_ps();
-	__m128 sum_a1 = _mm_setzero_ps();
-	__m128 sum_b1 = _mm_setzero_ps();
+void oklab_avg_sse(const struct Color colors, struct Color cents,
+		   uint8_t which_cent) {
+	uint16_t num_col = colors.num;
+	__m128	 sum_l1	 = _mm_setzero_ps();
+	__m128	 sum_a1	 = _mm_setzero_ps();
+	__m128	 sum_b1	 = _mm_setzero_ps();
 
 	__m128 sum_l2 = _mm_setzero_ps();
 	__m128 sum_a2 = _mm_setzero_ps();
@@ -262,36 +266,36 @@ struct Color oklab_avg_sse(const struct oklab_SoA *__restrict colors,
 	size_t i = 0;
 	for (; i + 15 < num_col; i += 16) {
 #ifdef PALETTE_DEBUG
-		assert(((uintptr_t)&colors->l[i + 0] % 16) == 0);
-		assert(((uintptr_t)&colors->a[i + 0] % 16) == 0);
-		assert(((uintptr_t)&colors->b[i + 0] % 16) == 0);
+		assert(((uintptr_t)colors.alpha[i + 0] % 16) == 0);
+		assert(((uintptr_t)colors.beta[i + 0] % 16) == 0);
+		assert(((uintptr_t)colors.gamma[i + 0] % 16) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 4] % 16) == 0);
-		assert(((uintptr_t)&colors->a[i + 4] % 16) == 0);
-		assert(((uintptr_t)&colors->b[i + 4] % 16) == 0);
+		assert(((uintptr_t)colors.alpha[i + 4] % 16) == 0);
+		assert(((uintptr_t)colors.beta[i + 4] % 16) == 0);
+		assert(((uintptr_t)colors.gamma[i + 4] % 16) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 8] % 16) == 0);
-		assert(((uintptr_t)&colors->a[i + 8] % 16) == 0);
-		assert(((uintptr_t)&colors->b[i + 8] % 16) == 0);
+		assert(((uintptr_t)colors.alpha[i + 8] % 16) == 0);
+		assert(((uintptr_t)colors.beta[i + 8] % 16) == 0);
+		assert(((uintptr_t)colors.gamma[i + 8] % 16) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 12] % 16) == 0);
-		assert(((uintptr_t)&colors->a[i + 12] % 16) == 0);
-		assert(((uintptr_t)&colors->b[i + 12] % 16) == 0);
+		assert(((uintptr_t)colors.alpha[i + 12] % 16) == 0);
+		assert(((uintptr_t)colors.beta[i + 12] % 16) == 0);
+		assert(((uintptr_t)colors.gamma[i + 12] % 16) == 0);
 #endif
-		__m128 l1 = _mm_load_ps(&colors->l[i + 0]);
-		__m128 l2 = _mm_load_ps(&colors->l[i + 4]);
-		__m128 l3 = _mm_load_ps(&colors->l[i + 8]);
-		__m128 l4 = _mm_load_ps(&colors->l[i + 12]);
+		__m128 l1 = _mm_load_ps(&colors.alpha[i + 0]);
+		__m128 l2 = _mm_load_ps(&colors.alpha[i + 4]);
+		__m128 l3 = _mm_load_ps(&colors.alpha[i + 8]);
+		__m128 l4 = _mm_load_ps(&colors.alpha[i + 12]);
 
-		__m128 a1 = _mm_load_ps(&colors->a[i + 0]);
-		__m128 a2 = _mm_load_ps(&colors->a[i + 4]);
-		__m128 a3 = _mm_load_ps(&colors->a[i + 8]);
-		__m128 a4 = _mm_load_ps(&colors->a[i + 12]);
+		__m128 a1 = _mm_load_ps(&colors.beta[i + 0]);
+		__m128 a2 = _mm_load_ps(&colors.beta[i + 4]);
+		__m128 a3 = _mm_load_ps(&colors.beta[i + 8]);
+		__m128 a4 = _mm_load_ps(&colors.beta[i + 12]);
 
-		__m128 b1 = _mm_load_ps(&colors->b[i + 0]);
-		__m128 b2 = _mm_load_ps(&colors->b[i + 4]);
-		__m128 b3 = _mm_load_ps(&colors->b[i + 8]);
-		__m128 b4 = _mm_load_ps(&colors->b[i + 12]);
+		__m128 b1 = _mm_load_ps(&colors.gamma[i + 0]);
+		__m128 b2 = _mm_load_ps(&colors.gamma[i + 4]);
+		__m128 b3 = _mm_load_ps(&colors.gamma[i + 8]);
+		__m128 b4 = _mm_load_ps(&colors.gamma[i + 12]);
 
 		sum_l1 = _mm_add_ps(sum_l1, l1);
 		sum_l2 = _mm_add_ps(sum_l2, l2);
@@ -329,21 +333,23 @@ struct Color oklab_avg_sse(const struct oklab_SoA *__restrict colors,
 	float b = b_vec[0] + b_vec[1] + b_vec[2] + b_vec[3];
 
 	for (; i < num_col; ++i) {
-		l += colors->l[i];
-		a += colors->a[i];
-		b += colors->b[i];
+		l += colors.alpha[i];
+		a += colors.beta[i];
+		b += colors.gamma[i];
 	}
 
-	float scale = 1.0f / num_col;
-
-	return Color_create_oklab(l * scale, a * scale, b * scale);
+	float scale		= 1.0f / num_col;
+	cents.alpha[which_cent] = l * scale;
+	cents.beta[which_cent]	= a * scale;
+	cents.gamma[which_cent] = b * scale;
 }
 
-struct Color oklab_avg_sse_cw(const struct oklab_SoA *__restrict colors,
-				uint16_t num_col) {
-	__m128 sum_l1 = _mm_setzero_ps();
-	__m128 sum_a1 = _mm_setzero_ps();
-	__m128 sum_b1 = _mm_setzero_ps();
+void oklab_avg_sse_cw(const struct Color colors, struct Color cents,
+			      uint8_t which_cent) {
+	uint16_t num_col = colors.num;
+	__m128	 sum_l1	 = _mm_setzero_ps();
+	__m128	 sum_a1	 = _mm_setzero_ps();
+	__m128	 sum_b1	 = _mm_setzero_ps();
 
 	__m128 sum_l2 = _mm_setzero_ps();
 	__m128 sum_a2 = _mm_setzero_ps();
@@ -362,36 +368,36 @@ struct Color oklab_avg_sse_cw(const struct oklab_SoA *__restrict colors,
 	size_t i = 0;
 	for (; i + 15 < num_col; i += 16) {
 #ifdef PALETTE_DEBUG
-		assert(((uintptr_t)&colors->l[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors.alpha[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors.beta[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors.gamma[i + 0] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 4] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 4] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors.alpha[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors.beta[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors.gamma[i + 4] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors.alpha[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors.beta[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors.gamma[i + 8] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 12] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 12] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors.alpha[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors.beta[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors.gamma[i + 12] % 32) == 0);
 #endif
-		__m128 l1 = _mm_load_ps(&colors->l[i + 0]);
-		__m128 l2 = _mm_load_ps(&colors->l[i + 4]);
-		__m128 l3 = _mm_load_ps(&colors->l[i + 8]);
-		__m128 l4 = _mm_load_ps(&colors->l[i + 12]);
+		__m128 l1 = _mm_load_ps(&colors.alpha[i + 0]);
+		__m128 l2 = _mm_load_ps(&colors.alpha[i + 4]);
+		__m128 l3 = _mm_load_ps(&colors.alpha[i + 8]);
+		__m128 l4 = _mm_load_ps(&colors.alpha[i + 12]);
 
-		__m128 a1 = _mm_load_ps(&colors->a[i + 0]);
-		__m128 a2 = _mm_load_ps(&colors->a[i + 4]);
-		__m128 a3 = _mm_load_ps(&colors->a[i + 8]);
-		__m128 a4 = _mm_load_ps(&colors->a[i + 12]);
+		__m128 a1 = _mm_load_ps(&colors.beta[i + 0]);
+		__m128 a2 = _mm_load_ps(&colors.beta[i + 4]);
+		__m128 a3 = _mm_load_ps(&colors.beta[i + 8]);
+		__m128 a4 = _mm_load_ps(&colors.beta[i + 12]);
 
-		__m128 b1 = _mm_load_ps(&colors->b[i + 0]);
-		__m128 b2 = _mm_load_ps(&colors->b[i + 4]);
-		__m128 b3 = _mm_load_ps(&colors->b[i + 8]);
-		__m128 b4 = _mm_load_ps(&colors->b[i + 12]);
+		__m128 b1 = _mm_load_ps(&colors.gamma[i + 0]);
+		__m128 b2 = _mm_load_ps(&colors.gamma[i + 4]);
+		__m128 b3 = _mm_load_ps(&colors.gamma[i + 8]);
+		__m128 b4 = _mm_load_ps(&colors.gamma[i + 12]);
 
 		__m128 chroma1 = _mm_sqrt_ps(
 		    _mm_add_ps(_mm_mul_ps(a1, a1), _mm_mul_ps(b1, b1)));
@@ -421,7 +427,6 @@ struct Color oklab_avg_sse_cw(const struct oklab_SoA *__restrict colors,
 					       _mm_add_ps(chroma3, chroma4));
 
 		sum_w = _mm_add_ps(sum_w, chroma_sum);
-		
 	}
 
 	__m128 sum_l =
@@ -449,10 +454,10 @@ struct Color oklab_avg_sse_cw(const struct oklab_SoA *__restrict colors,
 
 	for (; i < num_col; ++i) {
 		float chroma =
-		    sqrtf(SQUARE(colors->a[i]) + SQUARE(colors->b[i]));
-		l += colors->l[i];
-		a += colors->a[i] * chroma;
-		b += colors->b[i] * chroma;
+		    sqrtf(SQUARE(colors.beta[i]) + SQUARE(colors.gamma[i]));
+		l += colors.alpha[i];
+		a += colors.beta[i] * chroma;
+		b += colors.gamma[i] * chroma;
 		w += chroma;
 	}
 
@@ -464,6 +469,8 @@ struct Color oklab_avg_sse_cw(const struct oklab_SoA *__restrict colors,
 		a /= w;
 		b /= w;
 	}
-
-	return Color_create_oklab(l, a, b);
+	
+	cents.alpha[which_cent] = l / num_col;
+	cents.beta[which_cent]	= a;
+	cents.gamma[which_cent] = b;
 }

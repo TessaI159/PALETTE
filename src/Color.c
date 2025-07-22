@@ -32,9 +32,7 @@ static inline float gamma_correct(float channel) {
 }
 
 
-static inline void convert_cielab_to_srgb(struct Color *color) {
-	const struct cieLAB lab = color->data.cielab;
-
+static inline void convert_cielab_to_srgb(struct Color colors) {
 	const double fy = (lab.l + 16.0) / 116.0;
 	const double fx = fy + (lab.a / 500.0);
 	const double fz = fy - (lab.b / 200.0);
@@ -55,7 +53,6 @@ static inline void convert_cielab_to_srgb(struct Color *color) {
 	color->data.srgb.b =
 	    fma(x, 0.0556434, fma(y, -0.2040259, z * 1.0572252));
 
-	color->current_space = COLOR_SRGB;
 }
 
 static inline void convert_oklab_to_srgb(struct Color *color) {

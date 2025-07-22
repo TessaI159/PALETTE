@@ -8,7 +8,7 @@
 
 /* row * num_col + col */
 /* Colors are columns, Centroids are rows */
-float *delta_ok_diff_fallback(const struct Color colors,
+void delta_ok_diff_fallback(const struct Color colors,
 			      const struct Color cents, float *diffs) {
 	uint32_t num_col  = colors.num;
 	uint32_t num_cent = cents.num;
@@ -21,10 +21,9 @@ float *delta_ok_diff_fallback(const struct Color colors,
 				  SQUARE(colors.gamma[i] - cents.gamma[j]));
 		}
 	}
-	return diffs;
 }
 
-float *delta_cie76_diff_fallback(const struct Color colors,
+void delta_cie76_diff_fallback(const struct Color colors,
 				 const struct Color cents, float *diffs) {
 	uint32_t num_col  = colors.num;
 	uint32_t num_cent = cents.num;
@@ -37,10 +36,9 @@ float *delta_cie76_diff_fallback(const struct Color colors,
 				  SQUARE(colors.gamma[i] - cents.gamma[j]));
 		}
 	}
-	return diffs;
 }
 
-float *delta_cie94_diff_fallback(const struct Color colors,
+void delta_cie94_diff_fallback(const struct Color colors,
 				 const struct Color cents, float *diffs) {
 	uint32_t num_col  = colors.num;
 	uint32_t num_cent = cents.num;

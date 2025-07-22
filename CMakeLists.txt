@@ -68,7 +68,7 @@ else()
     "-mavx2")
   
   set_source_files_properties(src/Average_SSE3.c PROPERTIES COMPILE_FLAGS
-    "-msse2")
+    "-msse4.1")
   
 endif()
 
@@ -129,7 +129,7 @@ if (PALETTE_BUILD_TESTS)
       "-mavx")
     
     set_source_files_properties(src/Average_SSE3.c PROPERTIES COMPILE_FLAGS
-      "-msse3")
+      "-msse4.1")
     
   endif()
 

@@ -10,10 +10,12 @@
 #define SPACES 2
 #define DIFF_FUNCS 3
 
-static float *(*delta_diff_intern)(const struct Color, const struct Color);
+static void (*delta_diff_intern)(const struct Color, const struct Color,
+				 float *);
 
-static float *(*diff_table[INST_SETS][SPACES][DIFF_FUNCS])(const struct Color,
-							   const struct Color) =
+static void (*diff_table[INST_SETS][SPACES][DIFF_FUNCS])(const struct Color,
+							 const struct Color,
+							 float *) =
     {[AVX] =
 	 {[OK] =
 	      {[EUCLIDEAN] = delta_ok_diff_avx, [D94] = NULL, [D2000] = NULL},
