@@ -4,6 +4,7 @@
 #include <stdint.h>
 typedef struct Color Color;
 
-float *delta_diff(const struct Color colors, const struct Color centroids);
+void delta_diff(const struct Color *restrict colors,
+		const struct Color *restrict cents, float *restrict diffs);
 
 #endif

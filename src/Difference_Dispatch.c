@@ -10,31 +10,31 @@
 #define SPACES 2
 #define DIFF_FUNCS 3
 
-static void (*delta_diff_intern)(const struct Color, const struct Color,
-				 float *);
+static void (*delta_diff_intern)(const struct Color *restrict,
+				 const struct Color *restrict, float *restrict);
 
-static void (*diff_table[INST_SETS][SPACES][DIFF_FUNCS])(const struct Color,
-							 const struct Color,
-							 float *) =
-    {[AVX] =
-	 {[OK] =
-	      {[EUCLIDEAN] = delta_ok_diff_avx, [D94] = NULL, [D2000] = NULL},
-	  [CIE] = {[EUCLIDEAN] = delta_cie76_diff_avx,
-		   [D94]       = delta_cie94_diff_avx,
-		   [D2000]     = delta_ciede2000_diff_avx}},
-     [SSE] =
-	 {[OK] =
-	      {[EUCLIDEAN] = delta_ok_diff_sse, [D94] = NULL, [D2000] = NULL},
-	  [CIE] = {[EUCLIDEAN] = delta_cie76_diff_sse,
-		   [D94]       = delta_cie94_diff_sse,
-		   [D2000]     = delta_ciede2000_diff_sse}},
-
-     [FB] = {[OK]  = {[EUCLIDEAN] = delta_ok_diff_fallback,
+static void (*diff_table[INST_SETS][SPACES][DIFF_FUNCS])(
+    const struct Color *restrict, const struct Color *restrict,
+    float *restrict) = {
+    [AVX] = {[OK]  = {[EUCLIDEAN] = delta_lab_euc_diff_avx,
 		      [D94]	  = NULL,
 		      [D2000]	  = NULL},
-	     [CIE] = {[EUCLIDEAN] = delta_cie76_diff_fallback,
-		      [D94]	  = delta_cie94_diff_fallback,
-		      [D2000]	  = delta_ciede2000_diff_fallback}}};
+	     [CIE] = {[EUCLIDEAN] = delta_lab_euc_diff_avx,
+		      [D94]	  = delta_cie94_diff_avx,
+		      [D2000]	  = delta_ciede2000_diff_avx}},
+    [SSE] = {[OK]  = {[EUCLIDEAN] = delta_lab_euc_diff_sse,
+		      [D94]	  = NULL,
+		      [D2000]	  = NULL},
+	     [CIE] = {[EUCLIDEAN] = delta_lab_euc_diff_sse,
+		      [D94]	  = delta_cie94_diff_sse,
+		      [D2000]	  = delta_ciede2000_diff_sse}},
+
+    [FB] = {[OK]  = {[EUCLIDEAN] = delta_lab_euc_diff_fallback,
+		     [D94]	 = NULL,
+		     [D2000]	 = NULL},
+	    [CIE] = {[EUCLIDEAN] = delta_lab_euc_diff_fallback,
+		     [D94]	 = delta_cie94_diff_fallback,
+		     [D2000]	 = delta_ciede2000_diff_fallback}}};
 
 static inline void difference_init() {
 	enum InstSet inst;
@@ -61,7 +61,8 @@ static inline void check_initialized() {
 	}
 }
 
-float **delta_diff(const struct Color colors, const struct Color centroids) {
+void delta_diff(const struct Color *restrict colors,
+		const struct Color *restrict cents, float *restrict diffs) {
 	check_initialized();
-	return delta_diff_intern(colors, centroids);
+	return delta_diff_intern(colors, cents, diffs);
 }

@@ -1,3 +1,3 @@
 #include "Parameters.h"
 
-struct Parameters global_parameters = {0};
+struct Parameters g_params = {0};
