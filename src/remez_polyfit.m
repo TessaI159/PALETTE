@@ -1,58 +1,229 @@
-function [coeffs, err] = remez_polyfit(f, interval, degree)
-  n = degree;
-  xi = cheby_nodes(n + 2, interval);
-  k = 0:(n+1);
-  alternation = (-1).^k;
-  pows = 1:degree;
-  A = zeros(n+2, n+2);
-  for i = 1:(n+2)
-    A(i, 1) = 1;
-    A(i, 2:n+1) = xi(i).^pows;
-    A(i, end) = alternation(i);
-  endfor
-  A;
-  r = f(xi(:));
-  sol = A \ r;
-endfunction
+function [coeffs_full, maxerr, x_extrema] = remez_polyfit(f, a, n, max_iter, tol, mode)
+  if nargin < 6
+    mode = "mixed";
+  end
 
-function [nodes] = cheby_nodes(n, interval)
-  k = 0:(n-1);
-  nodes_init = cos(((2*k + 1)*pi)/(2*(n)));
-  a = interval(1);
-  b = interval(2);
-  nodes = 0.5*(a + b) + 0.5*(b - a)*nodes_init;
-endfunction
+  if a <= 0
+    error("Interval must be symmetric about 0: use a > 0 for [-a, a]");
+  end
 
-function [dx] = prime(f, x, tdelta=1e-8)
-  h = 0.1;
-  dx = (f(x+h)- f(x))/h;
-  do
-    h /= 10;
-    new_dx = (f(x + h) - f(x))/h;
-    delta = abs(new_dx - dx);
-    dx = new_dx;
-  until (delta < tdelta)
-endfunction
+  % Determine powers to include
+  switch mode
+    case "even"
+      powers = n:-1:0;
+      powers = powers(mod(powers,2)==0);
+      interval = [0, a];
+    case "odd"
+      powers = n:-1:0;
+      powers = powers(mod(powers,2)==1);
+      interval = [0, a];
+    case "mixed"
+      powers = n:-1:0;
+      interval = [-a, a];
+    otherwise
+      error("Mode must be 'even', 'odd', or 'mixed'");
+  end
 
-function [independent, dependent] = find_lgst_abs_extrema(f, gridsize, interval)
-  grid = linspace(interval(1), interval(2), gridsize);
-  old_dx = prime(f, grid(1));
-  for i = 2:gridsize
-    new_dx = prime(f, grid(i));
-    if (new_dx * old_dx <= 0)
-      
-    endif
-  endfor
-endfunction
+  m = length(powers);  % number of polynomial coefficients
+  N = m + 1;           % number of extrema
 
-function [x, zero] = find_zero(f, initial, num_iter)
-  if (prime(f, initial) == 0)
-    x = initial;
-    zero = f(x);
-    return;
-  endif
-  i = 1;
-  do
-    x = x - f(x)/prime(f, x);
-  until (f(x) == 0 | i == num_iter);
-endfunction
+  x_extrema = init_chebyshev_extrema(interval(1), interval(2), N);
+
+  for iter = 1:max_iter
+    % Solve interpolation system
+    A = zeros(N, m + 1);
+    for i = 1:N
+      A(i, 1:m) = x_extrema(i).^powers;
+      A(i, end) = (-1)^(i+1);
+    end
+    y = f(x_extrema(:));
+    sol = A \ y(:);
+    coeffs = sol(1:end-1);
+    err = sol(end);
+
+    % Build error function
+    poly = @(x) polyval_shifted(coeffs, powers, x);
+    switch mode
+      case "even"
+        E = @(x) f(x) - poly(abs(x));
+      case "odd"
+        E = @(x) f(x) - sign(x).*poly(abs(x));
+      case "mixed"
+        E = @(x) f(x) - poly(x);
+    end
+
+    % Refine extrema using adjacent subintervals
+    new_extrema = zeros(1, N);
+    new_extrema(1) = interval(1);
+    for i = 1:N-1
+      left = x_extrema(i);
+      right = x_extrema(i+1);
+      new_extrema(i+1) = find_local_extremum(E, left, right, tol);
+    end
+
+    % Check alternation
+    signs = sign(E(new_extrema));
+    signs = sign(signs + 1e-13);  % avoid 0
+    if ~is_alternating(signs)
+      xx = linspace(interval(1), interval(2), 10000);
+      ee = abs(E(xx));
+      bounds = linspace(interval(1), interval(2), N+1);
+      new_extrema = zeros(1, N);
+      for i = 1:N
+        mask = (xx >= bounds(i)) & (xx <= bounds(i+1));
+        [~, idx] = max(ee(mask));
+        xx_segment = xx(mask);
+        new_extrema(i) = xx_segment(idx);
+      end
+    end
+
+    % Convergence check
+    if max(abs(new_extrema - x_extrema)) < tol
+      x_extrema = new_extrema;
+      break;
+    end
+
+    x_extrema = new_extrema;
+  end
+
+  % --- Truncate and convert to single-precision float ---
+  coeffs = single(round(coeffs * 1e8) / 1e8); % C-style float rounding
+  coeffs_full = zeros(1, n+1, 'single');
+  coeffs_full(n - powers + 1) = coeffs;
+
+  % --- Evaluate error using single precision ---
+  xx = single(linspace(-a, a, 10000));
+  switch mode
+    case "even"
+      px = polyval_shifted(coeffs, powers, abs(xx));
+    case "odd"
+      px = polyval_shifted(coeffs, powers, abs(xx)) .* sign(xx);
+    case "mixed"
+      px = polyval(coeffs_full, xx);
+  end
+  fx = f(xx);
+  ex = fx - px;
+  maxerr = max(abs(ex));
+
+  % --- Plot results ---
+  figure;
+  subplot(2,1,1);
+  plot(xx, fx, 'b', xx, px, 'r--', 'LineWidth', 1.5);
+  legend('f(x)', 'P(x)');
+  title(sprintf("Remez Approximation on [−%.8f, %.8f], degree %d (%s)", a, a, n, mode));
+  xlabel("x"); ylabel("Value"); grid on;
+
+  subplot(2,1,2);
+  plot(xx, ex, 'k', 'LineWidth', 1.5); hold on;
+  line([min(xx), max(xx)], [maxerr, maxerr], 'Color', 'r', 'LineStyle', '--');
+  line([min(xx), max(xx)], [-maxerr, -maxerr], 'Color', 'r', 'LineStyle', '--');
+  err_str = sprintf("±%.8e", maxerr);
+  text(min(xx), maxerr, [' ' err_str], 'VerticalAlignment', 'bottom', 'Color', 'r');
+  text(min(xx), -maxerr, [' -' err_str], 'VerticalAlignment', 'top', 'Color', 'r');
+  title("Error Function: f(x) − P(x)");
+  xlabel("x"); ylabel("Error"); grid on;
+
+  % --- Print symbolic polynomial with all terms in standard notation ---
+  powers = n:-1:0;
+  fprintf("\nSymbolic form of minimax polynomial (degree %d, mode = %s):\n", n, mode);
+  fprintf("P(x) = ");
+  for i = 1:length(coeffs_full)
+    c = coeffs_full(i);
+    p = powers(i);
+    if i == 1
+      if c < 0
+        fprintf("-");
+        c = -c;
+      end
+    else
+      if c < 0
+        fprintf(" - ");
+        c = -c;
+      else
+        fprintf(" + ");
+      end
+    end
+    if p == 0
+      fprintf("%.8f", c);
+    elseif p == 1
+      fprintf("%.8fx", c);
+    else
+      fprintf("%.8fx^%d", c, p);
+    end
+  end
+  fprintf("\n");
+
+  % --- Output parity-filtered coefficients as C array ---
+  powers = n:-1:0;
+  switch mode
+    case "even"
+      filter = mod(powers,2) == 0;
+    case "odd"
+      filter = mod(powers,2) == 1;
+    case "mixed"
+      filter = true(size(powers));
+  end
+
+  filtered_coeffs = coeffs_full(filter);
+  filtered_powers = powers(filter);
+  array_name = sprintf("coeffs");
+
+  fprintf("\nC-style %s coefficient array (%d terms):\n", mode, length(filtered_coeffs));
+  fprintf("\n/*\n*Minimax polynomial approximation on [%.8f, %.8f].\n*Degree: %d\n*Max absolute error (float): %0.8f\n*Generated by remez_polyfit.m in GNU Octave\n*/\n", ...
+    -a, a, n, maxerr);
+  fprintf("__m128 %s[%d] = {", array_name, length(filtered_coeffs));
+  for i = 1:length(filtered_coeffs)
+    if i < length(filtered_coeffs)
+      fprintf("_mm_set1_ps(%.8ff), ", filtered_coeffs(i));
+    else
+      fprintf("_mm_set1_ps(%.8ff)", filtered_coeffs(i));
+    end
+  end
+  fprintf("};\n");
+
+  % --- Generate Horner's form ---
+  fprintf("      __m128 x2 = _mm_mul_ps(x, x);\n");
+  fprintf("      __m128 y = _mm_set1_ps(%.8ff);\n", filtered_coeffs(1));
+  for i = 2:length(filtered_coeffs)
+    gap = filtered_powers(i-1) - filtered_powers(i);
+    if gap == 1
+      fprintf("      y = _mm_fmadd_ps(y, x, _mm_set1_ps(%.8ff));\n", filtered_coeffs(i));
+    else
+      fprintf("      y = _mm_fmadd_ps(y, x2, _mm_set1_ps(%.8ff));\n", filtered_coeffs(i));
+    end
+  end
+end
+
+function tf = is_alternating(signs)
+  tf = all(diff(signs) ~= 0);
+end
+
+function pval = polyval_shifted(coeffs, powers, x)
+  pval = zeros(size(x), 'single');
+  for k = 1:length(powers)
+    pval += coeffs(k) * x.^powers(k);
+  end
+end
+
+function x0 = find_local_extremum(E, a, b, tol)
+  gr = (sqrt(5) - 1) / 2;
+  c = b - gr * (b - a);
+  d = a + gr * (b - a);
+  while abs(c - d) > tol
+    if abs(E(c)) > abs(E(d))
+      b = d;
+    else
+      a = c;
+    end
+    c = b - gr * (b - a);
+    d = a + gr * (b - a);
+  end
+  x0 = (a + b) / 2;
+end
+
+function x = init_chebyshev_extrema(a, b, N)
+  k = 1:N;
+  x = cos((2*k - 1) * pi / (2*N));
+  x = 0.5 * ((b - a) * x + (b + a));
+  x = sort(x);
+end

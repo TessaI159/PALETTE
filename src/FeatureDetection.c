@@ -250,8 +250,8 @@ static void query_cpu_features(struct system_features_t *f) {
 #endif
     uint32_t ecx = regs[2];
 
-    f->sse = (ecx & (1u << 0)) != 0;
-    int has_avx = (ecx & (1u << 28)) != 0;
+    f->sse = (ecx & (1u << 19)) != 0;
+    int has_avx = (ecx & (1u << 28)) != 0;   
     int has_fma = (ecx & (1u << 12)) != 0;
 
 #if defined(_WIN32)
@@ -277,4 +277,11 @@ void query_features(struct system_features_t *f) {
     query_cache_sizes(f);
     query_cpu_features(f);
     f->initialized = true;
+    if (f->avx) {
+      f->instructions = AVX;
+    } else if (f->sse) {
+      f->instructions = SSE;
+    } else {
+      f->instructions = FB;
+    }
 }

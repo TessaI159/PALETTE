@@ -52,24 +52,29 @@ endif()
 # ---- Main App Sources ----
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.c)
 list(FILTER SOURCES EXCLUDE REGEX "src/test/.*\.c$")
+list(FILTER SOURCES EXCLUDE REGEX "src/trig_test.c")
+list(FILTER SOURCES EXCLUDE REGEX "src/pow_speed_test.c")
+
+
 
 add_executable(PALETTE ${SOURCES})
 
-if(MSVC)
+if (MSVC)
   set_source_files_properties(src/Average_AVX.c PROPERTIES COMPILE_FLAGS
-    "/arch:AVX2")
-  
+    "/arch:AVX")
+  set_source_files_properties(src/Difference_AVX.c PROPERTIES COMPILE_FLAGS
+    "/arch:AVX")
+    
 else()
-  set_source_files_properties(src/FeatureDetection.c PROPERTIES COMPILE_FLAGS
-  "-mxsave")
-
-  
   set_source_files_properties(src/Average_AVX.c PROPERTIES COMPILE_FLAGS
-    "-mavx2")
-  
+    "-mavx2 -mfma")
+  set_source_files_properties(src/Difference_AVX.c PROPERTIES COMPILE_FLAGS
+    "-mavx2 -mfma")
+    
   set_source_files_properties(src/Average_SSE3.c PROPERTIES COMPILE_FLAGS
-    "-msse2")
-  
+    "-msse4.1")
+  set_source_files_properties(src/Difference_SSE3.c PROPERTIES COMPILE_FLAGS
+    "-msse4.1")
 endif()
 
 # ---- Includes and Linking ----
@@ -105,6 +110,8 @@ if (PALETTE_BUILD_TESTS)
   target_include_directories(unity PUBLIC ${UNITY_DIR})
 
   file(GLOB_RECURSE IMPL_SOURCES CONFIGURE_DEPENDS src/*.c)
+  list(FILTER IMPL_SOURCES EXCLUDE REGEX "src/trig_test.c")
+  list(FILTER IMPL_SOURCES EXCLUDE REGEX "src/pow_speed_test.c")
   list(FILTER IMPL_SOURCES EXCLUDE REGEX "src/main.c")
   list(FILTER IMPL_SOURCES EXCLUDE REGEX "src/test/.*\.c$")
   file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS src/test/*.c)
@@ -123,14 +130,19 @@ if (PALETTE_BUILD_TESTS)
   if (MSVC)
     set_source_files_properties(src/Average_AVX.c PROPERTIES COMPILE_FLAGS
       "/arch:AVX")
+    set_source_files_properties(src/Difference_AVX.c PROPERTIES COMPILE_FLAGS
+      "/arch:AVX")
     
   else()
-    set_source_files_properties(src/Average_AVX.c PROPERTIES COMPILE_FLAGS
-      "-mavx")
+  set_source_files_properties(src/Average_AVX.c PROPERTIES COMPILE_FLAGS
+    "-mavx2 -mfma")
+  set_source_files_properties(src/Difference_AVX.c PROPERTIES COMPILE_FLAGS
+    "-mavx2 -mfma")
     
     set_source_files_properties(src/Average_SSE3.c PROPERTIES COMPILE_FLAGS
-      "-msse3")
-    
+      "-msse4.1")
+    set_source_files_properties(src/Difference_SSE3.c PROPERTIES COMPILE_FLAGS
+      "-msse4.1")
   endif()
 
   target_include_directories(unit_tests PRIVATE

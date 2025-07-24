@@ -2,6 +2,7 @@
 #include <assert.h>
 #endif
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #ifdef __AVX__
 #include <immintrin.h>
@@ -11,12 +12,12 @@
 
 #define SQUARE(x) ((x) * (x))
 
-struct Color cielab_avg_avx(const struct cielab_SoA *__restrict colors,
-			    uint16_t num_col) {
-
-	__m256 sum_l1 = _mm256_setzero_ps();
-	__m256 sum_a1 = _mm256_setzero_ps();
-	__m256 sum_b1 = _mm256_setzero_ps();
+void cielab_avg_avx(const struct Color *restrict colors,
+		    struct Color *restrict cents, uint8_t which_cent) {
+	uint32_t num_col = colors->num;
+	__m256 sum_l1  = _mm256_setzero_ps();
+	__m256 sum_a1  = _mm256_setzero_ps();
+	__m256 sum_b1  = _mm256_setzero_ps();
 
 	__m256 sum_l2 = _mm256_setzero_ps();
 	__m256 sum_a2 = _mm256_setzero_ps();
@@ -30,42 +31,42 @@ struct Color cielab_avg_avx(const struct cielab_SoA *__restrict colors,
 	__m256 sum_a4 = _mm256_setzero_ps();
 	__m256 sum_b4 = _mm256_setzero_ps();
 
-	uint16_t i;
+	uint32_t i;
 	for (i = 0; i + 31 < num_col; i += 32) {
 #ifdef PALETTE_DEBUG
-		assert(((uintptr_t)&colors->l[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 0] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 8] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 16] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 16] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 16] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 16] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 16] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 16] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 24] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 24] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 24] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 24] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 24] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 24] % 32) == 0);
 #endif
 
 		int    t  = 0;
-		__m256 l1 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a1 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b1 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l1 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a1 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b1 = _mm256_load_ps(&colors->gamma[i + t]);
 		t += 8;
-		__m256 l2 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a2 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b2 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l2 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a2 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b2 = _mm256_load_ps(&colors->gamma[i + t]);
 		t += 8;
-		__m256 l3 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a3 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b3 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l3 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a3 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b3 = _mm256_load_ps(&colors->gamma[i + t]);
 		t += 8;
-		__m256 l4 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a4 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b4 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l4 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a4 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b4 = _mm256_load_ps(&colors->gamma[i + t]);
 
 		sum_l1 = _mm256_add_ps(sum_l1, l1);
 		sum_l2 = _mm256_add_ps(sum_l2, l2);
@@ -106,19 +107,23 @@ struct Color cielab_avg_avx(const struct cielab_SoA *__restrict colors,
 		  b_vec[5] + b_vec[6] + b_vec[7];
 
 	for (; i < num_col; ++i) {
-		l += colors->l[i];
-		a += colors->a[i];
-		b += colors->b[i];
+		l += colors->alpha[i];
+		a += colors->beta[i];
+		b += colors->gamma[i];
 	}
 	float scale = 1.0f / num_col;
 
-	return Color_create_cielab(l * scale, a * scale, b * scale);
+	cents->alpha[which_cent] = l * scale;
+	cents->beta[which_cent]	 = a * scale;
+	cents->gamma[which_cent] = b * scale;
 }
-struct Color cielab_avg_avx_cw(const struct cielab_SoA *__restrict colors,
-			       uint16_t num_col) {
-	__m256 sum_l1 = _mm256_setzero_ps();
-	__m256 sum_a1 = _mm256_setzero_ps();
-	__m256 sum_b1 = _mm256_setzero_ps();
+
+void cielab_avg_avx_cw(const struct Color *restrict colors,
+		       struct Color *restrict cents, uint8_t which_cent) {
+	uint32_t num_col = colors->num;
+	__m256	 sum_l1	 = _mm256_setzero_ps();
+	__m256	 sum_a1	 = _mm256_setzero_ps();
+	__m256	 sum_b1	 = _mm256_setzero_ps();
 
 	__m256 sum_l2 = _mm256_setzero_ps();
 	__m256 sum_a2 = _mm256_setzero_ps();
@@ -134,41 +139,41 @@ struct Color cielab_avg_avx_cw(const struct cielab_SoA *__restrict colors,
 
 	__m256 sum_w = _mm256_setzero_ps();
 
-	size_t i = 0;
+	uint32_t i = 0;
 	for (; i + 31 < num_col; i += 32) {
 #ifdef PALETTE_DEBUG
-		assert(((uintptr_t)&colors->l[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 0] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 4] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 4] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 4] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 8] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 12] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 12] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 12] % 32) == 0);
 #endif
 		int    t  = 0;
-		__m256 l1 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a1 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b1 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l1 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a1 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b1 = _mm256_load_ps(&colors->gamma[i + t]);
 		t += 8;
-		__m256 l2 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a2 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b2 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l2 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a2 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b2 = _mm256_load_ps(&colors->gamma[i + t]);
 		t += 8;
-		__m256 l3 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a3 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b3 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l3 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a3 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b3 = _mm256_load_ps(&colors->gamma[i + t]);
 		t += 8;
-		__m256 l4 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a4 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b4 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l4 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a4 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b4 = _mm256_load_ps(&colors->gamma[i + t]);
 
 		__m256 chroma1 = _mm256_sqrt_ps(_mm256_add_ps(
 		    _mm256_mul_ps(a1, a1), _mm256_mul_ps(b1, b1)));
@@ -230,10 +235,10 @@ struct Color cielab_avg_avx_cw(const struct cielab_SoA *__restrict colors,
 
 	for (; i < num_col; ++i) {
 		float chroma =
-		    sqrtf(SQUARE(colors->a[i]) + SQUARE(colors->b[i]));
-		l += colors->l[i];
-		a += colors->a[i] * chroma;
-		b += colors->b[i] * chroma;
+		    sqrtf(SQUARE(colors->beta[i]) + SQUARE(colors->gamma[i]));
+		l += colors->alpha[i];
+		a += colors->beta[i] * chroma;
+		b += colors->gamma[i] * chroma;
 		w += chroma;
 	}
 
@@ -246,11 +251,14 @@ struct Color cielab_avg_avx_cw(const struct cielab_SoA *__restrict colors,
 		b /= w;
 	}
 
-	return Color_create_cielab(l, a, b);
+	cents->alpha[which_cent] = l;
+	cents->beta[which_cent]	 = a;
+	cents->gamma[which_cent] = b;
 }
 
-struct Color oklab_avg_avx(const struct oklab_SoA *__restrict colors,
-			   uint16_t num_col) {
+void oklab_avg_avx(const struct Color *restrict colors,
+		   struct Color *restrict cents, uint8_t which_cent) {
+	uint32_t num_col = colors->num;
 
 	__m256 sum_l1 = _mm256_setzero_ps();
 	__m256 sum_a1 = _mm256_setzero_ps();
@@ -268,40 +276,40 @@ struct Color oklab_avg_avx(const struct oklab_SoA *__restrict colors,
 	__m256 sum_a4 = _mm256_setzero_ps();
 	__m256 sum_b4 = _mm256_setzero_ps();
 
-	uint16_t i;
+	uint32_t i;
 	for (i = 0; i + 31 < num_col; i += 32) {
 #ifdef PALETTE_DEBUG
-		assert(((uintptr_t)&colors->l[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 0] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 8] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 16] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 16] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 16] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 16] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 16] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 16] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 24] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 24] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 24] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 24] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 24] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 24] % 32) == 0);
 #endif
 
-		__m256 l1 = _mm256_load_ps(&colors->l[i + 0]);
-		__m256 l2 = _mm256_load_ps(&colors->l[i + 8]);
-		__m256 l3 = _mm256_load_ps(&colors->l[i + 16]);
-		__m256 l4 = _mm256_load_ps(&colors->l[i + 24]);
+		__m256 l1 = _mm256_load_ps(&colors->alpha[i + 0]);
+		__m256 l2 = _mm256_load_ps(&colors->alpha[i + 8]);
+		__m256 l3 = _mm256_load_ps(&colors->alpha[i + 16]);
+		__m256 l4 = _mm256_load_ps(&colors->alpha[i + 24]);
 
-		__m256 a1 = _mm256_load_ps(&colors->a[i + 0]);
-		__m256 a2 = _mm256_load_ps(&colors->a[i + 8]);
-		__m256 a3 = _mm256_load_ps(&colors->a[i + 16]);
-		__m256 a4 = _mm256_load_ps(&colors->a[i + 24]);
+		__m256 a1 = _mm256_load_ps(&colors->beta[i + 0]);
+		__m256 a2 = _mm256_load_ps(&colors->beta[i + 8]);
+		__m256 a3 = _mm256_load_ps(&colors->beta[i + 16]);
+		__m256 a4 = _mm256_load_ps(&colors->beta[i + 24]);
 
-		__m256 b1 = _mm256_load_ps(&colors->b[i + 0]);
-		__m256 b2 = _mm256_load_ps(&colors->b[i + 8]);
-		__m256 b3 = _mm256_load_ps(&colors->b[i + 16]);
-		__m256 b4 = _mm256_load_ps(&colors->b[i + 24]);
+		__m256 b1 = _mm256_load_ps(&colors->gamma[i + 0]);
+		__m256 b2 = _mm256_load_ps(&colors->gamma[i + 8]);
+		__m256 b3 = _mm256_load_ps(&colors->gamma[i + 16]);
+		__m256 b4 = _mm256_load_ps(&colors->gamma[i + 24]);
 
 		sum_l1 = _mm256_add_ps(sum_l1, l1);
 		sum_l2 = _mm256_add_ps(sum_l2, l2);
@@ -342,17 +350,21 @@ struct Color oklab_avg_avx(const struct oklab_SoA *__restrict colors,
 		  b_vec[5] + b_vec[6] + b_vec[7];
 
 	for (; i < num_col; ++i) {
-		l += colors->l[i];
-		a += colors->a[i];
-		b += colors->b[i];
+		l += colors->alpha[i];
+		a += colors->beta[i];
+		b += colors->gamma[i];
 	}
 	float scale = 1.0f / num_col;
 
-	return Color_create_oklab(l * scale, a * scale, b * scale);
+	cents->alpha[which_cent] = l * scale;
+	cents->beta[which_cent]	 = a * scale;
+	cents->gamma[which_cent] = b * scale;
 }
 
-struct Color oklab_avg_avx_cw(const struct oklab_SoA *__restrict colors,
-			       uint16_t num_col) {
+void oklab_avg_avx_cw(const struct Color *restrict colors,
+		      struct Color *restrict cents, uint8_t which_cent) {
+	uint32_t num_col = colors->num;
+
 	__m256 sum_l1 = _mm256_setzero_ps();
 	__m256 sum_a1 = _mm256_setzero_ps();
 	__m256 sum_b1 = _mm256_setzero_ps();
@@ -371,41 +383,41 @@ struct Color oklab_avg_avx_cw(const struct oklab_SoA *__restrict colors,
 
 	__m256 sum_w = _mm256_setzero_ps();
 
-	size_t i = 0;
+	uint32_t i = 0;
 	for (; i + 31 < num_col; i += 32) {
 #ifdef PALETTE_DEBUG
-		assert(((uintptr_t)&colors->l[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 0] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 0] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 0] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 4] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 4] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 4] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 4] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 8] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 8] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 8] % 32) == 0);
 
-		assert(((uintptr_t)&colors->l[i + 12] % 32) == 0);
-		assert(((uintptr_t)&colors->a[i + 12] % 32) == 0);
-		assert(((uintptr_t)&colors->b[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors->alpha[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors->beta[i + 12] % 32) == 0);
+		assert(((uintptr_t)colors->gamma[i + 12] % 32) == 0);
 #endif
 		int    t  = 0;
-		__m256 l1 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a1 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b1 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l1 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a1 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b1 = _mm256_load_ps(&colors->gamma[i + t]);
 		t += 8;
-		__m256 l2 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a2 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b2 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l2 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a2 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b2 = _mm256_load_ps(&colors->gamma[i + t]);
 		t += 8;
-		__m256 l3 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a3 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b3 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l3 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a3 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b3 = _mm256_load_ps(&colors->gamma[i + t]);
 		t += 8;
-		__m256 l4 = _mm256_load_ps(&colors->l[i + t]);
-		__m256 a4 = _mm256_load_ps(&colors->a[i + t]);
-		__m256 b4 = _mm256_load_ps(&colors->b[i + t]);
+		__m256 l4 = _mm256_load_ps(&colors->alpha[i + t]);
+		__m256 a4 = _mm256_load_ps(&colors->beta[i + t]);
+		__m256 b4 = _mm256_load_ps(&colors->gamma[i + t]);
 
 		__m256 chroma1 = _mm256_sqrt_ps(_mm256_add_ps(
 		    _mm256_mul_ps(a1, a1), _mm256_mul_ps(b1, b1)));
@@ -467,10 +479,10 @@ struct Color oklab_avg_avx_cw(const struct oklab_SoA *__restrict colors,
 
 	for (; i < num_col; ++i) {
 		float chroma =
-		    sqrtf(SQUARE(colors->a[i]) + SQUARE(colors->b[i]));
-		l += colors->l[i];
-		a += colors->a[i] * chroma;
-		b += colors->b[i] * chroma;
+		    sqrtf(SQUARE(colors->beta[i]) + SQUARE(colors->gamma[i]));
+		l += colors->alpha[i];
+		a += colors->beta[i] * chroma;
+		b += colors->gamma[i] * chroma;
 		w += chroma;
 	}
 
@@ -483,5 +495,7 @@ struct Color oklab_avg_avx_cw(const struct oklab_SoA *__restrict colors,
 		b /= w;
 	}
 
-	return Color_create_oklab(l, a, b);
+	cents->alpha[which_cent] = l;
+	cents->beta[which_cent]	 = a;
+	cents->gamma[which_cent] = b;
 }

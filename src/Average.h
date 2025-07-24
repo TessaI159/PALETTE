@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
-struct Color color_avg(const void *__restrict colors, uint16_t num_col);
+typedef struct Color Color;
+
+void color_avg(const struct Color *restrict colors, struct Color *restrict cents,
+	       uint8_t which_cent);
 
 #endif

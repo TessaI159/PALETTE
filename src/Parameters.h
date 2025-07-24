@@ -3,16 +3,15 @@
 
 #include <stdbool.h>
 
-enum WorkingSpace {
-  WORKING_OKLAB,
-  WORKING_CIELAB
-};
+enum Space { OK, CIE };
+enum DiffFunc { EUCLIDEAN, D94, D2000 };
 
 struct Parameters {
-  bool chroma_weight;
-  enum WorkingSpace working_colorspace;
+	bool	      cw;
+	enum Space    space;
+	enum DiffFunc diff_fn;
 };
 
-extern struct Parameters global_parameters;
+extern struct Parameters g_params;
 
 #endif
