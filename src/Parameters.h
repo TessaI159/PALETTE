@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-enum Space { OK, CIE };
+enum Space { OK, CIE, SRGB };
 enum DiffFunc { EUCLIDEAN, D94, D2000 };
 
 struct Parameters {

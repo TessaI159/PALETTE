@@ -277,7 +277,7 @@ void query_features(struct system_features_t *f) {
     query_cache_sizes(f);
     query_cpu_features(f);
     f->initialized = true;
-    if (f->avx) {
+    if (f->avx && f->fma3) {
       f->instructions = AVX;
     } else if (f->sse) {
       f->instructions = SSE;

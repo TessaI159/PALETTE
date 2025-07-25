@@ -23,8 +23,7 @@
 
 extern struct system_features_t features;
 
-static inline int width_from_pixels(int pixels) {
-  
+static inline int width_from_pixels(int pixels) { 
 	return round(sqrt(pixels) * 4.0f / 3.0f);
 }
 

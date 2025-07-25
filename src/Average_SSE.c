@@ -9,7 +9,6 @@
 #include <pmmintrin.h>
 #endif
 
-#include "Align.h"
 #include "Color.h"
 
 #define SQUARE(x) ((x) * (x))

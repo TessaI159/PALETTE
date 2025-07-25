@@ -1,29 +1,37 @@
-function [coeffs_full, maxerr, x_extrema] = remez_polyfit(f, a, n, max_iter, tol, mode)
+function [coeffs_full, maxerr, x_extrema] = remez_polyfit(f, interval, n, max_iter, tol, mode)
   if nargin < 6
     mode = "mixed";
   end
 
-  if a <= 0
-    error("Interval must be symmetric about 0: use a > 0 for [-a, a]");
-  end
+  a = interval(1);
+  b = interval(2);
+  sym = abs(a + b) < 1e-12;
+  
 
   % Determine powers to include
   switch mode
     case "even"
+      if ~sym
+	error("Even mode requires a symmetric interval.")
+      end
       powers = n:-1:0;
       powers = powers(mod(powers,2)==0);
-      interval = [0, a];
+      interval = [0, b];
     case "odd"
+      if ~sym
+	error("Odd mode requires a symmetric interval.")
+      end
       powers = n:-1:0;
       powers = powers(mod(powers,2)==1);
-      interval = [0, a];
+      interval = [0, b];
     case "mixed"
       powers = n:-1:0;
-      interval = [-a, a];
+      interval = [a, b];
     otherwise
-      error("Mode must be 'even', 'odd', or 'mixed'");
+      error("Mode must be 'even', 'odd', or 'mixed'. If even or odd, interval\
+  must be symmetric");
   end
-
+  
   m = length(powers);  % number of polynomial coefficients
   N = m + 1;           % number of extrema
 
@@ -86,13 +94,12 @@ function [coeffs_full, maxerr, x_extrema] = remez_polyfit(f, a, n, max_iter, tol
     x_extrema = new_extrema;
   end
 
-  % --- Truncate and convert to single-precision float ---
-  coeffs = single(round(coeffs * 1e8) / 1e8); % C-style float rounding
-  coeffs_full = zeros(1, n+1, 'single');
+  % Build full polynomial
+  coeffs_full = zeros(1, n+1);
   coeffs_full(n - powers + 1) = coeffs;
 
-  % --- Evaluate error using single precision ---
-  xx = single(linspace(-a, a, 10000));
+  % Plot
+  xx = linspace(interval(1), interval(2), 10000);
   switch mode
     case "even"
       px = polyval_shifted(coeffs, powers, abs(xx));
@@ -105,93 +112,111 @@ function [coeffs_full, maxerr, x_extrema] = remez_polyfit(f, a, n, max_iter, tol
   ex = fx - px;
   maxerr = max(abs(ex));
 
-  % --- Plot results ---
   figure;
   subplot(2,1,1);
   plot(xx, fx, 'b', xx, px, 'r--', 'LineWidth', 1.5);
   legend('f(x)', 'P(x)');
-  title(sprintf("Remez Approximation on [−%.8f, %.8f], degree %d (%s)", a, a, n, mode));
+  title(sprintf("Remez Approximation on [−%.2f, %.2f], degree %d (%s)", a, a, n, mode));
   xlabel("x"); ylabel("Value"); grid on;
 
   subplot(2,1,2);
   plot(xx, ex, 'k', 'LineWidth', 1.5); hold on;
   line([min(xx), max(xx)], [maxerr, maxerr], 'Color', 'r', 'LineStyle', '--');
   line([min(xx), max(xx)], [-maxerr, -maxerr], 'Color', 'r', 'LineStyle', '--');
-  err_str = sprintf("±%.8e", maxerr);
+  err_str = sprintf("±%.2e", maxerr);
   text(min(xx), maxerr, [' ' err_str], 'VerticalAlignment', 'bottom', 'Color', 'r');
   text(min(xx), -maxerr, [' -' err_str], 'VerticalAlignment', 'top', 'Color', 'r');
   title("Error Function: f(x) − P(x)");
   xlabel("x"); ylabel("Error"); grid on;
 
-  % --- Print symbolic polynomial with all terms in standard notation ---
-  powers = n:-1:0;
-  fprintf("\nSymbolic form of minimax polynomial (degree %d, mode = %s):\n", n, mode);
-  fprintf("P(x) = ");
-  for i = 1:length(coeffs_full)
-    c = coeffs_full(i);
-    p = powers(i);
-    if i == 1
-      if c < 0
-        fprintf("-");
-        c = -c;
-      end
-    else
-      if c < 0
-        fprintf(" - ");
-        c = -c;
-      else
-        fprintf(" + ");
-      end
+% --- Print symbolic polynomial with all terms in standard notation ---
+powers = n:-1:0;
+fprintf("\nSymbolic form of minimax polynomial (degree %d, mode = %s):\n", n, mode);
+fprintf("P(x) = ");
+
+for i = 1:length(coeffs_full)
+  c = coeffs_full(i);
+  p = powers(i);
+
+  % Print sign
+  if i == 1
+    % first term: just print the sign if negative
+    if c < 0
+      fprintf("-");
+      c = -c;
     end
-    if p == 0
-      fprintf("%.8f", c);
-    elseif p == 1
-      fprintf("%.8fx", c);
+  else
+    if c < 0
+      fprintf(" - ");
+      c = -c;
     else
-      fprintf("%.8fx^%d", c, p);
+      fprintf(" + ");
     end
   end
-  fprintf("\n");
 
-  % --- Output parity-filtered coefficients as C array ---
-  powers = n:-1:0;
-  switch mode
-    case "even"
-      filter = mod(powers,2) == 0;
-    case "odd"
-      filter = mod(powers,2) == 1;
-    case "mixed"
-      filter = true(size(powers));
+  % Print coefficient and power
+  if p == 0
+    fprintf("%.12f", c);
+  elseif p == 1
+    fprintf("%.12fx", c);
+  else
+    fprintf("%.12fx^%d", c, p);
   end
+end
+fprintf("\n");
+% --- Output parity-filtered coefficients as C array ---
+powers = n:-1:0;
+switch mode
+  case "even"
+    filter = mod(powers,2) == 0;
+  case "odd"
+    filter = mod(powers,2) == 1;
+  case "mixed"
+    filter = true(size(powers));
+end
 
-  filtered_coeffs = coeffs_full(filter);
-  filtered_powers = powers(filter);
-  array_name = sprintf("coeffs");
+filtered_coeffs = coeffs_full(filter);
+filtered_powers = powers(filter);
+array_name = sprintf("coeffs");
 
-  fprintf("\nC-style %s coefficient array (%d terms):\n", mode, length(filtered_coeffs));
-  fprintf("\n/*\n*Minimax polynomial approximation on [%.8f, %.8f].\n*Degree: %d\n*Max absolute error (float): %0.8f\n*Generated by remez_polyfit.m in GNU Octave\n*/\n", ...
-    -a, a, n, maxerr);
-  fprintf("__m128 %s[%d] = {", array_name, length(filtered_coeffs));
-  for i = 1:length(filtered_coeffs)
-    if i < length(filtered_coeffs)
-      fprintf("_mm_set1_ps(%.8ff), ", filtered_coeffs(i));
-    else
-      fprintf("_mm_set1_ps(%.8ff)", filtered_coeffs(i));
-    end
+fprintf("\n/**\n");
+fprintf("*Minimax polynomial approximation on [%f, %f.]\n", a, b);
+fprintf("*Degree: %d\n", n);
+fprintf("*Theoretical max absolute error: %e\n", maxerr);
+fprintf("*Generated by remez_polyfit.m in GNU Octave\n");
+fprintf("**/\n")
+fprintf("__m128 %s[%d] = {", array_name, length(filtered_coeffs));
+for i = 1:length(filtered_coeffs)
+  if i < length(filtered_coeffs)
+    fprintf("_mm_set1_ps(%.8ff), ", filtered_coeffs(i));
+  else
+    fprintf("_mm_set1_ps(%.8ff)", filtered_coeffs(i));
   end
-  fprintf("};\n");
+end
+fprintf("};\n");
 
-  % --- Generate Horner's form ---
-  fprintf("      __m128 x2 = _mm_mul_ps(x, x);\n");
-  fprintf("      __m128 y = _mm_set1_ps(%.8ff);\n", filtered_coeffs(1));
-  for i = 2:length(filtered_coeffs)
-    gap = filtered_powers(i-1) - filtered_powers(i);
-    if gap == 1
-      fprintf("      y = _mm_fmadd_ps(y, x, _mm_set1_ps(%.8ff));\n", filtered_coeffs(i));
-    else
-      fprintf("      y = _mm_fmadd_ps(y, x2, _mm_set1_ps(%.8ff));\n", filtered_coeffs(i));
-    end
+% --- Generate Horner's form ---
+
+% Reverse order for Horner's rule
+rev_coeffs = filtered_coeffs;
+rev_powers = filtered_powers;
+
+% If there are gaps in powers (e.g., mixed mode), fill with explicit pow(x, p)
+deg_diff = diff(rev_powers);
+
+				% Start from highest term
+  fprintf("__m128 y = coeffs[0];\n");
+if strcmp("odd", mode) | strcmp ("even", mode)
+  fprintf("__m128 x2 = _mm_mul_ps(x, x);\n");
+end
+for i = 2:length(rev_coeffs)
+  gap = rev_powers(i-1) - rev_powers(i);
+  if gap == 1
+    fprintf("y = FMADD(y, x, coeffs[%d]);\n", i - 1);
+  else
+    fprintf("y = FMADD(y, x2, coeffs[%d]);\n", i - 1);
   end
+end
 end
 
 function tf = is_alternating(signs)
@@ -199,7 +224,7 @@ function tf = is_alternating(signs)
 end
 
 function pval = polyval_shifted(coeffs, powers, x)
-  pval = zeros(size(x), 'single');
+  pval = zeros(size(x));
   for k = 1:length(powers)
     pval += coeffs(k) * x.^powers(k);
   end

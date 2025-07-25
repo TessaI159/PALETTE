@@ -8,7 +8,8 @@ src/.dir-locals.el
 compile_commands.json
 src/compile_commands.json
 *.puml
-src/trig_test*
+src/trig_test.c
+src/trig_test
 src/*.log
 src/pow_speed_test*
 src/.#*
