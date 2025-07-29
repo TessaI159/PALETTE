@@ -13,3 +13,4 @@ src/trig_test
 src/*.log
 src/pow_speed_test*
 src/.#*
+src/*.txt

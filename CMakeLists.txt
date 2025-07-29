@@ -71,9 +71,11 @@ else()
   set_source_files_properties(src/Difference_AVX.c PROPERTIES COMPILE_FLAGS
     "-mavx2 -mfma")
     
-  set_source_files_properties(src/Average_SSE3.c PROPERTIES COMPILE_FLAGS
+  set_source_files_properties(src/Average_SSE.c PROPERTIES COMPILE_FLAGS
     "-msse4.1")
-  set_source_files_properties(src/Difference_SSE3.c PROPERTIES COMPILE_FLAGS
+  set_source_files_properties(src/Difference_SSE.c PROPERTIES COMPILE_FLAGS
+    "-msse4.1")
+  set_source_files_properties(src/Math_SSE.c PROPERTIES COMPILE_FLAGS
     "-msse4.1")
 endif()
 
@@ -139,9 +141,11 @@ if (PALETTE_BUILD_TESTS)
   set_source_files_properties(src/Difference_AVX.c PROPERTIES COMPILE_FLAGS
     "-mavx2 -mfma")
     
-    set_source_files_properties(src/Average_SSE3.c PROPERTIES COMPILE_FLAGS
+    set_source_files_properties(src/Average_SSE.c PROPERTIES COMPILE_FLAGS
       "-msse4.1")
-    set_source_files_properties(src/Difference_SSE3.c PROPERTIES COMPILE_FLAGS
+    set_source_files_properties(src/Difference_SSE.c PROPERTIES COMPILE_FLAGS
+      "-msse4.1")
+    set_source_files_properties(src/Math_SSE.c PROPERTIES COMPILE_FLAGS
       "-msse4.1")
   endif()
 
