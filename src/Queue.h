@@ -6,11 +6,11 @@
 #include <stdint.h>
 
 struct Queue {
-    size_t cap;
-    void **buffer;
-    size_t head;
-    size_t tail;
-    size_t mask;
+  size_t cap;
+  void **buffer;
+  size_t head;
+  size_t tail;
+  size_t mask;
 };
 
 /**

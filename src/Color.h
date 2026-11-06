@@ -6,10 +6,10 @@
 #include <stdint.h>
 
 struct Color {
-    float *alpha; /* e.g. R in sRGB, L in Lab */
-    float *beta;  /* e.g. G in sRGB, a in Lab */
-    float *gamma; /* e.g. B in sRGB, b in Lab */
-    uint32_t num;
+  float *alpha; /* e.g. R in sRGB, L in Lab */
+  float *beta;  /* e.g. G in sRGB, a in Lab */
+  float *gamma; /* e.g. B in sRGB, b in Lab */
+  uint32_t num;
 };
 
 /**
@@ -33,9 +33,9 @@ bool Color_clone(struct Color *dest, const struct Color *src);
  */
 static inline void Color_set(struct Color *c, uint32_t idx, float a, float b,
                              float g) {
-    c->alpha[idx] = a;
-    c->beta[idx] = b;
-    c->gamma[idx] = g;
+  c->alpha[idx] = a;
+  c->beta[idx] = b;
+  c->gamma[idx] = g;
 }
 
 /**
@@ -43,12 +43,12 @@ static inline void Color_set(struct Color *c, uint32_t idx, float a, float b,
  */
 static inline void Color_get(struct Color *c, uint32_t idx, float *a, float *b,
                              float *g) {
-    if (a)
-        *a = c->alpha[idx];
-    if (b)
-        *b = c->beta[idx];
-    if (g)
-        *g = c->gamma[idx];
+  if (a)
+    *a = c->alpha[idx];
+  if (b)
+    *b = c->beta[idx];
+  if (g)
+    *g = c->gamma[idx];
 }
 
 #endif

@@ -8,7 +8,7 @@
 #include "Difference_Internal.h"
 
 #if (defined(x86_64__) || defined(_M_X64) || defined(__i386__))
-&& defined(__AVX__)
+&&defined(__AVX__)
 #include <immintrin.h>
 
 #define SQUARE_SCALAR(x) ((x) * (x))
@@ -23,7 +23,7 @@
 #define _MM256_PI_2 1.57079633f
 #define _MM256_1_OV256ER_2PI 0.159154943f
 
-static inline __m256 pow7(__m256 x) {
+    static inline __m256 pow7(__m256 x) {
   __m256 x2 = _mm256_mul_ps(x, x);
   __m256 x4 = _mm256_mul_ps(x2, x2);
   return _mm256_mul_ps(x, _mm256_mul_ps(x2, x4));
@@ -31,12 +31,12 @@ static inline __m256 pow7(__m256 x) {
 
 static inline __m256 square(__m256 x) { return _mm256_mul_ps(x, x); }
 
-static inline __m256 deg_2_rad(__m256 x) {
+static inline __m256 deg_to_rad(__m256 x) {
   return _mm256_mul_ps(_mm256_div_ps(x, _mm256_set1_ps(180.0f)),
                        _mm256_set1_ps(_MM256_PI));
 }
 
-static inline __m256 rad_2_deg(__m256 x) {
+static inline __m256 rad_to_deg(__m256 x) {
   return _mm256_mul_ps(_mm256_div_ps(x, _mm256_set1_ps(_MM256_PI)),
                        _mm256_set1_ps(180.0f));
 }
@@ -442,11 +442,11 @@ void delta_ciede2000_diff_avx(const struct Color *restrict colors,
       __m256 mask = _mm256_and_ps(_mm256_cmp_ps(b1, zero, _CMP_EQ_OQ),
                                   _mm256_cmp_ps(a1p, zero, _CMP_EQ_OQ));
       const __m256 h1p =
-          _mm256_blendv_ps(rad_2_deg(_mm256_atan2_ps(b1, a1p)), zero, mask);
+          _mm256_blendv_ps(rad_to_deg(_mm256_atan2_ps(b1, a1p)), zero, mask);
       mask = _mm256_and_ps(_mm256_cmp_ps(a2p, zero, _CMP_EQ_OQ),
                            _mm256_cmp_ps(b2, zero, _CMP_EQ_OQ));
       const __m256 h2p =
-          _mm256_blendv_ps(rad_2_deg(_mm256_atan2_ps(b2, a2p)), zero, mask);
+          _mm256_blendv_ps(rad_to_deg(_mm256_atan2_ps(b2, a2p)), zero, mask);
 
       /* Step 2: Find dLp, dCp, dHp */
       const __m256 dLp = _mm256_sub_ps(L2, L1);
@@ -503,21 +503,22 @@ void delta_ciede2000_diff_avx(const struct Color *restrict colors,
           mask);
 
       __m256 T = _mm256_sub_ps(
-          one, _mm256_mul_ps(V256(0.17f), _mm256_cos_ps(deg_2_rad(_mm256_sub_ps(
-                                              avghp, V256(30.0f))))));
+          one,
+          _mm256_mul_ps(V256(0.17f), _mm256_cos_ps(deg_to_rad(
+                                         _mm256_sub_ps(avghp, V256(30.0f))))));
       T = _mm256_add_ps(
           T,
           _mm256_mul_ps(V256(0.24f),
-                        _mm256_cos_ps(deg_2_rad(_mm256_mul_ps(two, avghp)))));
+                        _mm256_cos_ps(deg_to_rad(_mm256_mul_ps(two, avghp)))));
       T = _mm256_add_ps(
           T,
           _mm256_mul_ps(V256(0.32f),
-                        _mm256_cos_ps(deg_2_rad(_mm256_add_ps(
+                        _mm256_cos_ps(deg_to_rad(_mm256_add_ps(
                             _mm256_mul_ps(V256(3.0f), avghp), V256(6.0f))))));
       T = _mm256_sub_ps(
           T,
           _mm256_mul_ps(V256(20.0f),
-                        _mm256_cos_ps(deg_2_rad(_mm256_sub_ps(
+                        _mm256_cos_ps(deg_to_rad(_mm256_sub_ps(
                             _mm256_mul_ps(V256(4.0f), avghp), V256(63.0f))))));
       const __m256 dtheta = _mm256_mul_ps(
           V256(30.0f),
@@ -541,7 +542,7 @@ void delta_ciede2000_diff_avx(const struct Color *restrict colors,
           one, _mm256_mul_ps(V256(0.015), _mm256_mul_ps(avgCp, T)));
       const __m256 RT = _mm256_mul_ps(
           V256(-1.0f),
-          _mm256_mul_ps(_mm256_sin_ps(deg_2_rad(_mm256_mul_ps(two, dtheta))),
+          _mm256_mul_ps(_mm256_sin_ps(deg_to_rad(_mm256_mul_ps(two, dtheta))),
                         RC));
       /* Omit KL, KH, KC as they are all just 1 for our
        * purposes*/
@@ -559,17 +560,22 @@ void delta_ciede2000_diff_avx(const struct Color *restrict colors,
 }
 #else
 
-void delta_lab_euc_diff_avx(const struct Color *restrict colors, const struct Color *restrict cents, float *restrict diffs) {
+void delta_lab_euc_diff_avx(const struct Color *restrict colors,
+                            const struct Color *restrict cents,
+                            float *restrict diffs) {
   delta_lab_euc_diff_fallback(colors, cents, diffs);
 }
 
-void delta_cie94_diff_avx(const struct Color *restrict colors, const struct Color *restrict cents, float *restrict diffs) {
+void delta_cie94_diff_avx(const struct Color *restrict colors,
+                          const struct Color *restrict cents,
+                          float *restrict diffs) {
   delta_cie94_diff_fallback(colors, cents, diffs);
 }
 
-void delta_ciede2000_diff_avx(const struct Color *restrict colors, const struct Color *restrict cents, float*restrict diffs) {
+void delta_ciede2000_diff_avx(const struct Color *restrict colors,
+                              const struct Color *restrict cents,
+                              float *restrict diffs) {
   delta_ciede2000_diff_fallback(colors, cents, diffs);
 }
 
 #endif
-

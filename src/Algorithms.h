@@ -23,7 +23,7 @@ struct kmeans_result {
 
 /**
  * @brief Runs KMeans clustering on SoA color data.
- * Wparam colors Input color array in SoA format.
+ * @param colors Input color array in SoA format.
  * @param params Clustering parameters.
  * @param result Output struct containing centroids and assignments.
  * @return true on success, false on error.

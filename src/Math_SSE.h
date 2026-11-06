@@ -15,8 +15,8 @@
 
 __m128 _mm_pow7_ps(__m128 x);
 __m128 _mm_square_ps(__m128 x);
-__m128 _mm_deg_2_rad_ps(__m128 x);
-__m128 _mm_rad_2_deg_ps(__m128 x);
+__m128 _mm_deg_to_rad_ps(__m128 x);
+__m128 _mm_rad_to_deg_ps(__m128 x);
 __m128 _mm_atan_ps(__m128 x);
 __m128 _mm_atan2_ps(__m128 y, __m128 x);
 __m128 _mm_sin_ps(__m128 x);

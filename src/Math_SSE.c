@@ -12,11 +12,11 @@ inline __m128 _mm_pow7_ps(__m128 x) {
 
 inline __m128 _mm_square_ps(__m128 x) { return _mm_mul_ps(x, x); }
 
-inline __m128 _mm_deg_2_rad_ps(__m128 x) {
+inline __m128 _mm_deg_to_rad_ps(__m128 x) {
   return _mm_mul_ps(_mm_div_ps(x, _mm_set1_ps(180.0f)), _mm_set1_ps(_MM_PI));
 }
 
-inline __m128 _mm_rad_2_deg_ps(__m128 x) {
+inline __m128 _mm_rad_to_deg_ps(__m128 x) {
   return _mm_mul_ps(_mm_div_ps(x, _mm_set1_ps(_MM_PI)), _mm_set1_ps(180.0f));
 }
 

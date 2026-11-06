@@ -33,5 +33,4 @@ void delta_ciede2000_diff_sse(const struct Color *restrict colors,
 void delta_ciede2000_diff_avx(const struct Color *restrict colors,
                               const struct Color *restrict cents,
                               float *restrict diffs);
-
 #endif
