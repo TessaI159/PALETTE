@@ -5,6 +5,6 @@
 typedef struct Color Color;
 
 void delta_diff(const struct Color *restrict colors,
-		const struct Color *restrict cents, float *restrict diffs);
+                const struct Color *restrict cents, float *restrict diffs);
 
 #endif

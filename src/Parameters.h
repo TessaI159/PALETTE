@@ -7,11 +7,12 @@ enum Space { OK, CIE, SRGB };
 enum DiffFunc { EUCLIDEAN, D94, D2000 };
 
 struct Parameters {
-	bool	      cw;
-	enum Space    space;
-	enum DiffFunc diff_fn;
+  bool cw;
+  enum Space space;
+  enum DiffFunc diff_fn;
 };
 
+/* g being global */
 extern struct Parameters g_params;
 
 #endif

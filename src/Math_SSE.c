@@ -1,197 +1,194 @@
 #include "Math_SSE.h"
 
-static inline __m128 V(float x) {
-	return _mm_set1_ps(x);
-}
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__)
+
+static inline __m128 V(float x) { return _mm_set1_ps(x); }
 
 inline __m128 _mm_pow7_ps(__m128 x) {
-	__m128 x2 = _mm_mul_ps(x, x);
-	__m128 x4 = _mm_mul_ps(x2, x2);
-	return _mm_mul_ps(x, _mm_mul_ps(x2, x4));
+  __m128 x2 = _mm_mul_ps(x, x);
+  __m128 x4 = _mm_mul_ps(x2, x2);
+  return _mm_mul_ps(x, _mm_mul_ps(x2, x4));
 }
 
-inline __m128 _mm_square_ps(__m128 x) {
-	return _mm_mul_ps(x, x);
-}
+inline __m128 _mm_square_ps(__m128 x) { return _mm_mul_ps(x, x); }
 
 inline __m128 _mm_deg_2_rad_ps(__m128 x) {
-	return _mm_mul_ps(_mm_div_ps(x, _mm_set1_ps(180.0f)),
-			  _mm_set1_ps(_MM_PI));
+  return _mm_mul_ps(_mm_div_ps(x, _mm_set1_ps(180.0f)), _mm_set1_ps(_MM_PI));
 }
 
 inline __m128 _mm_rad_2_deg_ps(__m128 x) {
-	return _mm_mul_ps(_mm_div_ps(x, _mm_set1_ps(_MM_PI)),
-			  _mm_set1_ps(180.0f));
+  return _mm_mul_ps(_mm_div_ps(x, _mm_set1_ps(_MM_PI)), _mm_set1_ps(180.0f));
 }
 
 inline __m128 clampv(__m128 x, __m128 minv, __m128 maxv) {
-	return _mm_min_ps(_mm_max_ps(x, minv), maxv);
+  return _mm_min_ps(_mm_max_ps(x, minv), maxv);
 }
 
 inline __m128 _mm_atan_ps(__m128 x) {
-	const __m128 one  = V(1.0f);
-	const __m128 pi_2 = V(_MM_PI_2);
+  const __m128 one = V(1.0f);
+  const __m128 pi_2 = V(_MM_PI_2);
 
-	__m128 sign_mask = _mm_and_ps(x, V(-0.0f));
-	__m128 abs_x	 = _mm_andnot_ps(sign_mask, x);
+  __m128 sign_mask = _mm_and_ps(x, V(-0.0f));
+  __m128 abs_x = _mm_andnot_ps(sign_mask, x);
 
-	__m128 use_identity_mask = _mm_cmpgt_ps(abs_x, one);
+  __m128 use_identity_mask = _mm_cmpgt_ps(abs_x, one);
 
-	__m128 x_inv = _mm_div_ps(one, abs_x);
+  __m128 x_inv = _mm_div_ps(one, abs_x);
 
-	x = _mm_or_ps(_mm_and_ps(use_identity_mask, x_inv),
-		      _mm_andnot_ps(use_identity_mask, abs_x));
+  x = _mm_or_ps(_mm_and_ps(use_identity_mask, x_inv),
+                _mm_andnot_ps(use_identity_mask, abs_x));
 
-	__m128 coeffs[6] = {
-	    _mm_set1_ps(-1.889933876e-3f), _mm_set1_ps(1.723863386e-2f),
-	    _mm_set1_ps(-6.777403981e-2f), _mm_set1_ps(0.163024798f),
-	    _mm_set1_ps(-0.324574113f),	   _mm_set1_ps(0.999377847f)};
+  __m128 coeffs[6] = {
+      _mm_set1_ps(-1.889933876e-3f), _mm_set1_ps(1.723863386e-2f),
+      _mm_set1_ps(-6.777403981e-2f), _mm_set1_ps(0.163024798f),
+      _mm_set1_ps(-0.324574113f),    _mm_set1_ps(0.999377847f)};
 
-	__m128 y  = coeffs[0];
-	__m128 x2 = _mm_mul_ps(x, x);
-	y	  = FMADD(y, x2, coeffs[1]);
-	y	  = FMADD(y, x2, coeffs[2]);
-	y	  = FMADD(y, x2, coeffs[3]);
-	y	  = FMADD(y, x2, coeffs[4]);
-	y	  = FMADD(y, x2, coeffs[5]);
+  __m128 y = coeffs[0];
+  __m128 x2 = _mm_mul_ps(x, x);
+  y = FMADD(y, x2, coeffs[1]);
+  y = FMADD(y, x2, coeffs[2]);
+  y = FMADD(y, x2, coeffs[3]);
+  y = FMADD(y, x2, coeffs[4]);
+  y = FMADD(y, x2, coeffs[5]);
 
-	y = _mm_mul_ps(y, x);
+  y = _mm_mul_ps(y, x);
 
-	__m128 atan_corrected = _mm_sub_ps(pi_2, y);
-	y = _mm_or_ps(_mm_and_ps(use_identity_mask, atan_corrected),
-		      _mm_andnot_ps(use_identity_mask, y));
+  __m128 atan_corrected = _mm_sub_ps(pi_2, y);
+  y = _mm_or_ps(_mm_and_ps(use_identity_mask, atan_corrected),
+                _mm_andnot_ps(use_identity_mask, y));
 
-	y = _mm_or_ps(y, sign_mask);
-	return y;
+  y = _mm_or_ps(y, sign_mask);
+  return y;
 }
 
 inline __m128 _mm_atan2_ps(__m128 y, __m128 x) {
-	const __m128 zero     = V(0.0f);
-	const __m128 pi	      = V(_MM_PI);
-	const __m128 pi_2     = V(_MM_PI_2);
-	const __m128 neg_pi_2 = V(-_MM_PI_2);
+  const __m128 zero = V(0.0f);
+  const __m128 pi = V(_MM_PI);
+  const __m128 pi_2 = V(_MM_PI_2);
+  const __m128 neg_pi_2 = V(-_MM_PI_2);
 
-	__m128 abs_x = _mm_andnot_ps(V(-0.0f), x);
+  __m128 abs_x = _mm_andnot_ps(V(-0.0f), x);
 
-	__m128 safe_x = _mm_blendv_ps(x, V(1.0f), _mm_cmpeq_ps(abs_x, zero));
-	__m128 z      = _mm_div_ps(y, safe_x);
-	__m128 atan_z = _mm_atan_ps(z);
+  __m128 safe_x = _mm_blendv_ps(x, V(1.0f), _mm_cmpeq_ps(abs_x, zero));
+  __m128 z = _mm_div_ps(y, safe_x);
+  __m128 atan_z = _mm_atan_ps(z);
 
-	__m128 x_lt0 = _mm_cmplt_ps(x, zero);
-	__m128 y_eq0 = _mm_cmpeq_ps(y, zero);
-	__m128 y_lt0 = _mm_cmplt_ps(y, zero);
-	__m128 y_gt0 = _mm_cmpgt_ps(y, zero);
-	__m128 x_eq0 = _mm_cmpeq_ps(x, zero);
+  __m128 x_lt0 = _mm_cmplt_ps(x, zero);
+  __m128 y_eq0 = _mm_cmpeq_ps(y, zero);
+  __m128 y_lt0 = _mm_cmplt_ps(y, zero);
+  __m128 y_gt0 = _mm_cmpgt_ps(y, zero);
+  __m128 x_eq0 = _mm_cmpeq_ps(x, zero);
 
-	__m128 add_pi = _mm_and_ps(x_lt0, y_gt0);
-	__m128 sub_pi = _mm_and_ps(x_lt0, y_lt0);
-	__m128 result = atan_z;
-	result	      = _mm_add_ps(result, _mm_and_ps(add_pi, pi));
-	result	      = _mm_sub_ps(result, _mm_and_ps(sub_pi, pi));
+  __m128 add_pi = _mm_and_ps(x_lt0, y_gt0);
+  __m128 sub_pi = _mm_and_ps(x_lt0, y_lt0);
+  __m128 result = atan_z;
+  result = _mm_add_ps(result, _mm_and_ps(add_pi, pi));
+  result = _mm_sub_ps(result, _mm_and_ps(sub_pi, pi));
 
-	__m128 x0_y0   = _mm_and_ps(x_eq0, y_eq0);
-	__m128 x0_ygt0 = _mm_and_ps(x_eq0, y_gt0);
-	__m128 x0_ylt0 = _mm_and_ps(x_eq0, y_lt0);
+  __m128 x0_y0 = _mm_and_ps(x_eq0, y_eq0);
+  __m128 x0_ygt0 = _mm_and_ps(x_eq0, y_gt0);
+  __m128 x0_ylt0 = _mm_and_ps(x_eq0, y_lt0);
 
-	result = _mm_blendv_ps(result, zero, x0_y0);
-	result = _mm_blendv_ps(result, pi_2, x0_ygt0);
-	result = _mm_blendv_ps(result, neg_pi_2, x0_ylt0);
+  result = _mm_blendv_ps(result, zero, x0_y0);
+  result = _mm_blendv_ps(result, pi_2, x0_ygt0);
+  result = _mm_blendv_ps(result, neg_pi_2, x0_ylt0);
 
-	return result;
+  return result;
 }
 
 inline __m128 _mm_sin_ps(__m128 x) {
-	const __m128 inv_2pi = V(_MM_1_OVER_2PI);
-	const __m128 two_pi  = V(_MM_2PI);
-	const __m128 pi	     = V(_MM_PI);
+  const __m128 inv_2pi = V(_MM_1_OVER_2PI);
+  const __m128 two_pi = V(_MM_2PI);
+  const __m128 pi = V(_MM_PI);
 
-	/* Range reduce to -pi/2, pi/2 */
-	__m128 k = _mm_mul_ps(x, inv_2pi);
-	k	 = _mm_round_ps(k, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-	x	 = _mm_sub_ps(x, _mm_mul_ps(k, two_pi));
-	x	 = _mm_sub_ps(x, pi);
+  /* Range reduce to -pi/2, pi/2 */
+  __m128 k = _mm_mul_ps(x, inv_2pi);
+  k = _mm_round_ps(k, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+  x = _mm_sub_ps(x, _mm_mul_ps(k, two_pi));
+  x = _mm_sub_ps(x, pi);
 
-	__m128 coeffs[6] = {
-	    _mm_set1_ps(-2.379471354e-8f), _mm_set1_ps(2.751885564e-6f),
-	    _mm_set1_ps(-1.984070286e-4f), _mm_set1_ps(8.333329264e-3f),
-	    _mm_set1_ps(-0.166666672f),	   _mm_set1_ps(0.999999940f)};
+  __m128 coeffs[6] = {
+      _mm_set1_ps(-2.379471354e-8f), _mm_set1_ps(2.751885564e-6f),
+      _mm_set1_ps(-1.984070286e-4f), _mm_set1_ps(8.333329264e-3f),
+      _mm_set1_ps(-0.166666672f),    _mm_set1_ps(0.999999940f)};
 
-	__m128 x2 = _mm_mul_ps(x, x);
-	__m128 y  = coeffs[0];
+  __m128 x2 = _mm_mul_ps(x, x);
+  __m128 y = coeffs[0];
 
-	y = FMADD(y, x2, coeffs[1]);
-	y = FMADD(y, x2, coeffs[2]);
-	y = FMADD(y, x2, coeffs[3]);
-	y = FMADD(y, x2, coeffs[4]);
-	y = FMADD(y, x2, coeffs[5]);
+  y = FMADD(y, x2, coeffs[1]);
+  y = FMADD(y, x2, coeffs[2]);
+  y = FMADD(y, x2, coeffs[3]);
+  y = FMADD(y, x2, coeffs[4]);
+  y = FMADD(y, x2, coeffs[5]);
 
-	y = _mm_mul_ps(y, -x);
-	return _mm_min_ps(_mm_max_ps(y, V(-1.0f)), V(1.0f));
+  y = _mm_mul_ps(y, -x);
+  return _mm_min_ps(_mm_max_ps(y, V(-1.0f)), V(1.0f));
 }
 
 inline __m128 _mm_cos_ps(__m128 x) {
-	const __m128 inv_2pi = V(_MM_1_OVER_2PI);
-	const __m128 two_pi  = V(_MM_2PI);
-	const __m128 pi	     = V(_MM_PI);
+  const __m128 inv_2pi = V(_MM_1_OVER_2PI);
+  const __m128 two_pi = V(_MM_2PI);
+  const __m128 pi = V(_MM_PI);
 
-	__m128 k = _mm_mul_ps(x, inv_2pi);
-	k	 = _mm_round_ps(k, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-	x	 = _mm_sub_ps(x, _mm_mul_ps(k, two_pi));
-	x	 = _mm_sub_ps(x, pi);
+  __m128 k = _mm_mul_ps(x, inv_2pi);
+  k = _mm_round_ps(k, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+  x = _mm_sub_ps(x, _mm_mul_ps(k, two_pi));
+  x = _mm_sub_ps(x, pi);
 
-	__m128 coeffs[6] = {
-	    _mm_set1_ps(-2.605149520e-7f),  _mm_set1_ps(2.476016135e-5f),
-	    _mm_set1_ps(-1.388836140e-03f), _mm_set1_ps(4.166663625e-02f),
-	    _mm_set1_ps(-0.499999993f),	    _mm_set1_ps(0.999999999)};
-	__m128 x2 = _mm_mul_ps(x, x);
-	__m128 y  = coeffs[0];
-	y	  = FMADD(y, x2, coeffs[1]);
-	y	  = FMADD(y, x2, coeffs[2]);
-	y	  = FMADD(y, x2, coeffs[3]);
-	y	  = FMADD(y, x2, coeffs[4]);
-	y	  = FMADD(y, x2, coeffs[5]);
+  __m128 coeffs[6] = {
+      _mm_set1_ps(-2.605149520e-7f),  _mm_set1_ps(2.476016135e-5f),
+      _mm_set1_ps(-1.388836140e-03f), _mm_set1_ps(4.166663625e-02f),
+      _mm_set1_ps(-0.499999993f),     _mm_set1_ps(0.999999999)};
+  __m128 x2 = _mm_mul_ps(x, x);
+  __m128 y = coeffs[0];
+  y = FMADD(y, x2, coeffs[1]);
+  y = FMADD(y, x2, coeffs[2]);
+  y = FMADD(y, x2, coeffs[3]);
+  y = FMADD(y, x2, coeffs[4]);
+  y = FMADD(y, x2, coeffs[5]);
 
-	y = _mm_mul_ps(y, V(-1.0f));
-	return _mm_min_ps(_mm_max_ps(y, V(-1.0f)), V(1.0f));
+  y = _mm_mul_ps(y, V(-1.0f));
+  return _mm_min_ps(_mm_max_ps(y, V(-1.0f)), V(1.0f));
 }
 
 inline __m128 _mm_cbrt_ps(__m128 x) {
-	__m128 coeffs[8] = {
-	    _mm_set1_ps(527.924255f),  _mm_set1_ps(-1886.101562f),
-	    _mm_set1_ps(2668.042236f), _mm_set1_ps(-1896.805298f),
-	    _mm_set1_ps(710.645935f),  _mm_set1_ps(-135.148804f),
-	    _mm_set1_ps(12.443144f),   _mm_set1_ps(5.604970038e-2f)};
+  __m128 coeffs[8] = {_mm_set1_ps(527.924255f),  _mm_set1_ps(-1886.101562f),
+                      _mm_set1_ps(2668.042236f), _mm_set1_ps(-1896.805298f),
+                      _mm_set1_ps(710.645935f),  _mm_set1_ps(-135.148804f),
+                      _mm_set1_ps(12.443144f),   _mm_set1_ps(5.604970038e-2f)};
 
-	__m128 y = coeffs[0];
-	y	 = FMADD(y, x, coeffs[1]);
-	y	 = FMADD(y, x, coeffs[2]);
-	y	 = FMADD(y, x, coeffs[3]);
-	y	 = FMADD(y, x, coeffs[4]);
-	y	 = FMADD(y, x, coeffs[5]);
-	y	 = FMADD(y, x, coeffs[6]);
-	y	 = FMADD(y, x, coeffs[7]);
+  __m128 y = coeffs[0];
+  y = FMADD(y, x, coeffs[1]);
+  y = FMADD(y, x, coeffs[2]);
+  y = FMADD(y, x, coeffs[3]);
+  y = FMADD(y, x, coeffs[4]);
+  y = FMADD(y, x, coeffs[5]);
+  y = FMADD(y, x, coeffs[6]);
+  y = FMADD(y, x, coeffs[7]);
 
-	return y;
+  return y;
 }
 
 inline __m128 _mm_exp_ps(__m128 x) {
-	__m128 coeffs[9] = {
-	    _mm_set1_ps(1.956499731e-8f), _mm_set1_ps(1.677241844e-6f),
-	    _mm_set1_ps(6.017330956e-5f), _mm_set1_ps(1.174603360e-3f),
-	    _mm_set1_ps(1.359774692e-2f), _mm_set1_ps(9.559546303e-2f),
-	    _mm_set1_ps(0.401840591f),	  _mm_set1_ps(0.945352098f),
-	    _mm_set1_ps(0.994917907f),
-	};
+  __m128 coeffs[9] = {
+      _mm_set1_ps(1.956499731e-8f), _mm_set1_ps(1.677241844e-6f),
+      _mm_set1_ps(6.017330956e-5f), _mm_set1_ps(1.174603360e-3f),
+      _mm_set1_ps(1.359774692e-2f), _mm_set1_ps(9.559546303e-2f),
+      _mm_set1_ps(0.401840591f),    _mm_set1_ps(0.945352098f),
+      _mm_set1_ps(0.994917907f),
+  };
 
-	__m128 y = coeffs[0];
-	y	 = FMADD(y, x, coeffs[1]);
-	y	 = FMADD(y, x, coeffs[2]);
-	y	 = FMADD(y, x, coeffs[3]);
-	y	 = FMADD(y, x, coeffs[4]);
-	y	 = FMADD(y, x, coeffs[5]);
-	y	 = FMADD(y, x, coeffs[6]);
-	y	 = FMADD(y, x, coeffs[7]);
-	y	 = FMADD(y, x, coeffs[8]);
+  __m128 y = coeffs[0];
+  y = FMADD(y, x, coeffs[1]);
+  y = FMADD(y, x, coeffs[2]);
+  y = FMADD(y, x, coeffs[3]);
+  y = FMADD(y, x, coeffs[4]);
+  y = FMADD(y, x, coeffs[5]);
+  y = FMADD(y, x, coeffs[6]);
+  y = FMADD(y, x, coeffs[7]);
+  y = FMADD(y, x, coeffs[8]);
 
-	return y;
+  return y;
 }
+
+#endif

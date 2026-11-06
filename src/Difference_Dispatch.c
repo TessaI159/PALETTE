@@ -10,59 +10,62 @@
 #define SPACES 2
 #define DIFF_FUNCS 3
 
+/* TODO (Tess): Remove option to change params and space directly.
+ * Use a setter that updates this dispatcher on changing spaces/diff_fn */
+
 static void (*delta_diff_intern)(const struct Color *restrict,
-				 const struct Color *restrict, float *restrict);
+                                 const struct Color *restrict, float *restrict);
 
 static void (*diff_table[INST_SETS][SPACES][DIFF_FUNCS])(
     const struct Color *restrict, const struct Color *restrict,
     float *restrict) = {
-    [AVX] = {[OK]  = {[EUCLIDEAN] = delta_lab_euc_diff_avx,
-		      [D94]	  = NULL,
-		      [D2000]	  = NULL},
-	     [CIE] = {[EUCLIDEAN] = delta_lab_euc_diff_avx,
-		      [D94]	  = delta_cie94_diff_avx,
-		      [D2000]	  = delta_ciede2000_diff_avx}},
-    [SSE] = {[OK]  = {[EUCLIDEAN] = delta_lab_euc_diff_sse,
-		      [D94]	  = NULL,
-		      [D2000]	  = NULL},
-	     [CIE] = {[EUCLIDEAN] = delta_lab_euc_diff_sse,
-		      [D94]	  = delta_cie94_diff_sse,
-		      [D2000]	  = delta_ciede2000_diff_sse}},
+    [AVX] = {[OK] = {[EUCLIDEAN] = delta_lab_euc_diff_avx,
+                     [D94] = NULL,
+                     [D2000] = NULL},
+             [CIE] = {[EUCLIDEAN] = delta_lab_euc_diff_avx,
+                      [D94] = delta_cie94_diff_avx,
+                      [D2000] = delta_ciede2000_diff_avx}},
+    [SSE] = {[OK] = {[EUCLIDEAN] = delta_lab_euc_diff_sse,
+                     [D94] = NULL,
+                     [D2000] = NULL},
+             [CIE] = {[EUCLIDEAN] = delta_lab_euc_diff_sse,
+                      [D94] = delta_cie94_diff_sse,
+                      [D2000] = delta_ciede2000_diff_sse}},
 
-    [FB] = {[OK]  = {[EUCLIDEAN] = delta_lab_euc_diff_fallback,
-		     [D94]	 = NULL,
-		     [D2000]	 = NULL},
-	    [CIE] = {[EUCLIDEAN] = delta_lab_euc_diff_fallback,
-		     [D94]	 = delta_cie94_diff_fallback,
-		     [D2000]	 = delta_ciede2000_diff_fallback}}};
+    [FB] = {[OK] = {[EUCLIDEAN] = delta_lab_euc_diff_fallback,
+                    [D94] = NULL,
+                    [D2000] = NULL},
+            [CIE] = {[EUCLIDEAN] = delta_lab_euc_diff_fallback,
+                     [D94] = delta_cie94_diff_fallback,
+                     [D2000] = delta_ciede2000_diff_fallback}}};
 
 static inline void difference_init() {
-	enum InstSet inst;
+  enum InstSet inst;
 
-	if (!features.initialized) {
-		query_features(&features);
-	}
+  if (!features.initialized) {
+    query_features(&features);
+  }
 
-	if (features.avx) {
-		inst = AVX;
-	} else if (features.sse) {
-		inst = SSE;
-	} else {
-		inst = FB;
-	}
-	delta_diff_intern = diff_table[inst][g_params.space][g_params.diff_fn];
+  if (features.avx) {
+    inst = AVX;
+  } else if (features.sse) {
+    inst = SSE;
+  } else {
+    inst = FB;
+  }
+  delta_diff_intern = diff_table[inst][g_params.space][g_params.diff_fn];
 }
 
 static inline void check_initialized() {
-	static bool diff_initd = false;
-	if (!diff_initd) {
-		difference_init();
-		diff_initd = true;
-	}
+  static bool diff_initd = false;
+  if (!diff_initd) {
+    difference_init();
+    diff_initd = true;
+  }
 }
 
 void delta_diff(const struct Color *restrict colors,
-		const struct Color *restrict cents, float *restrict diffs) {
-	check_initialized();
-	return delta_diff_intern(colors, cents, diffs);
+                const struct Color *restrict cents, float *restrict diffs) {
+  check_initialized();
+  return delta_diff_intern(colors, cents, diffs);
 }

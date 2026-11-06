@@ -10,29 +10,29 @@ typedef struct Color Color;
    support them */
 
 void cielab_avg_avx(const struct Color *restrict colors,
-		    struct Color *restrict cents, uint8_t which_cent);
+                    struct Color *restrict cents, uint8_t which_cent);
 void cielab_avg_sse(const struct Color *restrict colors,
-		    struct Color *restrict cents, uint8_t which_cent);
+                    struct Color *restrict cents, uint8_t which_cent);
 void cielab_avg_fb(const struct Color *restrict colors,
-		   struct Color *restrict cents, uint8_t which_cent);
+                   struct Color *restrict cents, uint8_t which_cent);
 void cielab_avg_avx_cw(const struct Color *restrict colors,
-		       struct Color *restrict cents, uint8_t which_cent);
+                       struct Color *restrict cents, uint8_t which_cent);
 void cielab_avg_sse_cw(const struct Color *restrict colors,
-		       struct Color *restrict cents, uint8_t which_cent);
+                       struct Color *restrict cents, uint8_t which_cent);
 void cielab_avg_fb_cw(const struct Color *restrict colors,
-		      struct Color *restrict cents, uint8_t which_cent);
+                      struct Color *restrict cents, uint8_t which_cent);
 
 void oklab_avg_avx(const struct Color *restrict colors,
-		   struct Color *restrict cents, uint8_t which_cent);
+                   struct Color *restrict cents, uint8_t which_cent);
 void oklab_avg_sse(const struct Color *restrict colors,
-		   struct Color *restrict cents, uint8_t which_cent);
+                   struct Color *restrict cents, uint8_t which_cent);
 void oklab_avg_fb(const struct Color *restrict colors,
-		  struct Color *restrict cents, uint8_t which_cent);
+                  struct Color *restrict cents, uint8_t which_cent);
 void oklab_avg_avx_cw(const struct Color *restrict colors,
-		      struct Color *restrict cents, uint8_t which_cent);
+                      struct Color *restrict cents, uint8_t which_cent);
 void oklab_avg_sse_cw(const struct Color *restrict colors,
-		      struct Color *restrict cents, uint8_t which_cent);
+                      struct Color *restrict cents, uint8_t which_cent);
 void oklab_avg_fb_cw(const struct Color *restrict colors,
-		     struct Color *restrict cents, uint8_t which_cent);
+                     struct Color *restrict cents, uint8_t which_cent);
 
 #endif

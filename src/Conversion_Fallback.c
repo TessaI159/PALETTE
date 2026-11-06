@@ -1,211 +1,177 @@
 #include <math.h>
+#include <stdint.h>
 
 #include "Color.h"
+#include "Conversion.h"
 
 #define CUBE(x) ((x) * (x) * (x))
-/* Micro-optimizing out division */
-#define INV_255 0.00392156862745098
-#define INV_1_055 0.9478672985781991
-#define INV_12_92 0.07739938080495357
+#define SQUARE(x) ((x) * (x))
 
 /* Standard D65 2 degree illuminant constants */
-#define INV_X2 1.0521110608435826
-#define INV_Y2 1.0
-#define INV_Z2 .9184170164304804
+#define INV_X2 (1.0 / 95.047)
+#define INV_Y2 (1.0 / 100.0)
+#define INV_Z2 (1.0 / 108.883)
 
 #define X2 95.047
 #define Y2 100.0
 #define Z2 108.883
 
-/* Using doubles internally and then casting to float when assigning back to
-   struct Color adds just a touch of precision due to rounding, at the cost of
-   <= 72 bytes */
-static inline void linearize(struct Color *restrict const colors) {
-	const double threshold = 0.04045;
-	uint16_t     num_col   = colors->num;
-	for (uint16_t i = 0; i < num_col; ++i) {
-		colors->alpha[i] *= INV_255;
-		colors->beta[i] *= INV_255;
-		colors->gamma[i] *= INV_255;
+void srgb_linearize(struct Color *restrict colors) {
+  const static double threshold = 0.04045;
+  const uint32_t num_col = colors->num;
+  for (uint32_t i = 0; i < num_col; ++i) {
 
-		double tmpr = colors->alpha[i];
-		double tmpg = colors->beta[i];
-		double tmpb = colors->gamma[i];
-
-		colors->alpha[i] = tmpr > threshold
-				       ? pow(((tmpr + 0.055) * INV_1_055), 2.4)
-				       : tmpr * INV_12_92;
-		colors->beta[i]	 = tmpg > threshold
-				       ? pow(((tmpg + 0.055) * INV_1_055), 2.4)
-				       : tmpg * INV_12_92;
-		colors->gamma[i] = tmpb > threshold
-				       ? pow(((tmpb + 0.055) * INV_1_055), 2.4)
-				       : tmpb * INV_12_92;
-	}
+    const double r = colors->alpha[i];
+    const double g = colors->beta[i];
+    const double b = colors->gamma[i];
+    colors->alpha[i] =
+        (r > threshold) ? pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+    colors->beta[i] =
+        (g > threshold) ? pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+    colors->gamma[i] =
+        (b > threshold) ? pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+  }
 }
 
-static inline void gamma_correct(struct Color *restrict const colors) {
-	const double threshold = 0.0031308;
-	uint16_t     num_col   = colors->num;
-	for (uint16_t i = 0; i < num_col; ++i) {
-		double tmpr = colors->alpha[i];
-		double tmpg = colors->beta[i];
-		double tmpb = colors->gamma[i];
+void srgb_gamma_correct(struct Color *restrict const colors) {
+  const static double threshold = 0.0031308;
+  const uint32_t num_col = colors->num;
+  for (uint32_t i = 0; i < num_col; ++i) {
+    const double r = colors->alpha[i];
+    const double g = colors->beta[i];
+    const double b = colors->gamma[i];
 
-		colors->alpha[i] =
-		    tmpr > threshold
-			? 1.055 * pow(tmpr, 0.4166666666666663) - 0.055
-			: 12.92 * tmpr;
-		colors->beta[i] =
-		    tmpg > threshold
-			? 1.055 * pow(tmpg, 0.4166666666666663) - 0.055
-			: 12.92 * tmpg;
-		colors->gamma[i] =
-		    tmpb > threshold
-			? 1.055 * pow(tmpb, 0.4166666666666663) - 0.055
-			: 12.92 * tmpb;
-	}
+    colors->alpha[i] =
+        (r > threshold) ? 1.055 * pow(r, 1.0 / 2.4) - 0.055 : 12.92 * r;
+    colors->beta[i] =
+        (g > threshold) ? 1.055 * pow(g, 1.0 / 2.4) - 0.055 : 12.92 * g;
+    colors->gamma[i] =
+        (b > threshold) ? 1.055 * pow(b, 1.0 / 2.4) - 0.055 : 12.92 * b;
+  }
 }
 
 static inline void srgb_to_xyz(struct Color *restrict const colors) {
-	uint16_t num_col = colors->num;
-	linearize(colors);
-	for (uint16_t i = 0; i < num_col; ++i) {
-		colors->alpha[i] *= 100.0;
-		colors->beta[i] *= 100.0;
-		colors->gamma[i] *= 100.0;
-		float tmpx = colors->alpha[i] * 0.4124 +
-			     colors->beta[i] * 0.3576 +
-			     colors->gamma[i] * 0.1805;
-		float tmpy = colors->alpha[i] * 0.2126 +
-			     colors->beta[i] * 0.7152 +
-			     colors->gamma[i] * 0.0722;
-		float tmpz = colors->alpha[i] * 0.0193 +
-			     colors->beta[i] * 0.1192 +
-			     colors->gamma[i] * 0.9505;
-		colors->alpha[i] = tmpx;
-		colors->beta[i]	 = tmpy;
-		colors->gamma[i] = tmpz;
-	}
+  const uint32_t num_col = colors->num;
+  for (uint32_t i = 0; i < num_col; ++i) {
+    const double r = colors->alpha[i] * 100.0;
+    const double g = colors->beta[i] * 100.0;
+    const double b = colors->gamma[i] * 100.0;
+    const double x = r * 0.4124564 + g * 0.3575761 + b * 0.1804375;
+    const double y = r * 0.2126729 + g * 0.7151522 + b * 0.0721750;
+    const double z = r * 0.0193339 + g * 0.1191920 + b * 0.9503041;
+    colors->alpha[i] = x;
+    colors->beta[i] = y;
+    colors->gamma[i] = z;
+  }
 }
 
 static inline void xyz_to_srgb(struct Color *restrict const colors) {
-	uint16_t num_col = colors->num;
-	for (uint16_t i = 0; i < num_col; ++i) {
-		colors->alpha[i] *= 0.01;
-		colors->beta[i] *= 0.01;
-		colors->gamma[i] *= 0.01;
-		float tmpr = colors->alpha[i] * 3.2406 +
-			     colors->beta[i] * -1.5372 +
-			     colors->gamma[i] * -0.4986;
-		float tmpg = colors->alpha[i] * -0.9689 +
-			     colors->beta[i] * 1.8758 +
-			     colors->gamma[i] * 0.0415;
-		float tmpb = colors->alpha[i] * 0.0557 +
-			     colors->beta[i] * -0.2040 +
-			     colors->gamma[i] * 1.0570;
-		colors->alpha[i] = tmpr;
-		colors->beta[i]	 = tmpg;
-		colors->gamma[i] = tmpb;
-	}
+  const uint32_t num_col = colors->num;
+  for (uint32_t i = 0; i < num_col; ++i) {
+    const double x = colors->alpha[i] * 0.01;
+    const double y = colors->beta[i] * 0.01;
+    const double z = colors->gamma[i] * 0.01;
+    const double r = x * 3.2404542 + y * -1.5371385 + z * -0.4985314;
+    const double g = x * -0.9692660 + y * 1.8760108 + z * 0.0415560;
+    const double b = x * 0.0556434 + y * -0.2040259 + z * 1.0572252;
+    colors->alpha[i] = r;
+    colors->beta[i] = g;
+    colors->gamma[i] = b;
+  }
 }
 
+/* Linear sRGB [0,1] -> Oklab */
 void srgb_to_oklab_fb(struct Color *restrict colors) {
-	const uint32_t num_col = colors->num;
-	for (uint32_t i = 0; i < num_col; ++i) {
-		const double r = colors->alpha[i];
-		const double g = colors->beta[i];
-		const double b = colors->gamma[i];
-		double	     l =
-		    0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
-		double m =
-		    0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
-		double s =
-		    0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
-		l = cbrt(l);
-		m = cbrt(m);
-		s = cbrt(s);
-		/* cbrt has domain [0, 1] */
+  const uint32_t num_col = colors->num;
+  for (uint32_t i = 0; i < num_col; ++i) {
+    const double r = colors->alpha[i];
+    const double g = colors->beta[i];
+    const double b = colors->gamma[i];
+    double l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+    double m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+    double s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+    l = cbrt(l);
+    m = cbrt(m);
+    s = cbrt(s);
 
-		colors->alpha[i] =
-		    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
-		colors->beta[i] =
-		    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
-		colors->gamma[i] =
-		    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
-	}
+    colors->alpha[i] = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+    colors->beta[i] = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+    colors->gamma[i] = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  }
 }
 
-void srgb_to_cielab_fb(struct Color *restrict colors) {
-	const uint32_t num_col = colors->num;
-	srgb_to_xyz(colors);
-	for (uint32_t i = 0; i < num_col; ++i) {
-		double x = colors->alpha[i];
-		double y = colors->beta[i];
-		double z = colors->gamma[i];
-
-		x *= INV_X2;
-		y *= INV_Y2;
-		z *= INV_Z2;
-
-		x = x > 0.008856 ? cbrt(x)
-				 : (7.787 * x) + (0.13793103448275862);
-		y = y > 0.008856 ? cbrt(y)
-				 : (7.787 * y) + (0.13793103448275862);
-		z = z > 0.008856 ? cbrt(z)
-				 : (7.787 * z) + (0.13793103448275862);
-
-		colors->alpha[i] = (116.0 * y) - 16.0;
-		colors->beta[i]	 = 500.0 * (x - y);
-		colors->gamma[i] = 200.0 * (y - z);
-	}
-}
-
-/* Provides linear srgb output */
+/* Oklab -> Linear sRGB [0, 1]*/
 void oklab_to_srgb_fb(struct Color *restrict colors) {
-	uint32_t num_col = colors->num;
-	for (uint32_t i = 0; i < num_col; ++i) {
-		double l  = colors->alpha[i];
-		double a  = colors->beta[i];
-		double b  = colors->gamma[i];
-		double l_ = l + 0.3963377774 * a + 0.2158037573 * b;
-		double m_ = l - 0.1055613458 * a - 0.0638541728 * b;
-		double s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+  const uint32_t num_col = colors->num;
+  for (uint32_t i = 0; i < num_col; ++i) {
+    const double l = colors->alpha[i];
+    const double a = colors->beta[i];
+    const double b = colors->gamma[i];
+    double l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+    double m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+    double s_ = l - 0.0894841775 * a - 1.2914855480 * b;
 
-		l_ = CUBE(l_);
-		m_ = CUBE(m_);
-		s_ = CUBE(s_);
+    l_ = CUBE(l_);
+    m_ = CUBE(m_);
+    s_ = CUBE(s_);
 
-		colors->alpha[i] =
-		    4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_;
-		colors->beta[i] =
-		    -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_;
-		colors->gamma[i] =
-		    -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_;
-	}
+    colors->alpha[i] =
+        4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_;
+    colors->beta[i] =
+        -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_;
+    colors->gamma[i] =
+        -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_;
+  }
 }
 
-/* Provides linear srgb output */
+/* Linear sRGB [0, 1] -> CIELAB */
+void srgb_to_cielab_fb(struct Color *restrict colors) {
+  const uint32_t num_col = colors->num;
+  srgb_to_xyz(colors);
+  const static double delta = 6.0 / 29.0;
+  const static double delta2 = SQUARE(delta);
+  const static double delta3 = CUBE(delta);
+
+  for (uint32_t i = 0; i < num_col; ++i) {
+    double x = colors->alpha[i] * INV_X2;
+    double y = colors->beta[i] * INV_Y2;
+    double z = colors->gamma[i] * INV_Z2;
+
+    x = (x > delta3) ? cbrt(x) : (x / (3.0 * delta2) + 4.0 / 29.0);
+    y = (y > delta3) ? cbrt(y) : (y / (3.0 * delta2) + 4.0 / 29.0);
+    z = (z > delta3) ? cbrt(z) : (z / (3.0 * delta2) + 4.0 / 29.0);
+
+    colors->alpha[i] = (116.0 * y) - 16.0;
+    colors->beta[i] = 500.0 * (x - y);
+    colors->gamma[i] = 200.0 * (y - z);
+  }
+}
+
+/* CIELAB -> Linear sRGB [0, 1] */
 void cielab_to_srgb_fb(struct Color *restrict colors) {
-	uint32_t num_col = colors->num;
-	for (uint32_t i = 0; i < num_col; ++i) {
-		const double l	= colors->alpha[i];
-		const double a	= colors->beta[i];
-		const double b	= colors->gamma[i];
-		double	     y	= (l + 16.0) / 116.0;
-		double	     x	= a / 500.0 + y;
-		double	     z	= y - b / 200.0;
-		const double x3 = CUBE(x);
-		const double y3 = CUBE(y);
-		const double z3 = CUBE(z);
+  const uint32_t num_col = colors->num;
+  const static double delta = 6.0 / 29.0;
+  const static double delta2 = SQUARE(delta);
+  const static double delta3 = CUBE(delta);
+  for (uint32_t i = 0; i < num_col; ++i) {
+    const double l = colors->alpha[i];
+    const double a = colors->beta[i];
+    const double b = colors->gamma[i];
 
-		x = x3 > 0.008856 ? x3 : (x - 0.13793103448275862) / 7.787;
-		y = y3 > 0.008856 ? y3 : (y - 0.13793103448275862) / 7.787;
-		z = z3 > 0.008856 ? z3 : (z - 0.13793103448275862) / 7.787;
+    const double fy = (l + 16.0) / 116.0;
+    const double fx = a / 500.0 + fy;
+    const double fz = fy - b / 200.0;
 
-		colors->alpha[i] = x * X2;
-		colors->beta[i]	 = y * Y2;
-		colors->gamma[i] = z * Z2;
-	}
-	xyz_to_srgb(colors);
+    const double x =
+        (CUBE(fx) > delta3) ? CUBE(fx) : (fx - 16.0 / 116.0) + 3.0 * delta2;
+    const double y =
+        (CUBE(fy) > delta3) ? CUBE(fy) : (fy - 16.0 / 116.0) + 3.0 * delta2;
+    const double z =
+        (CUBE(fz) > delta3) ? CUBE(fz) : (fz - 16.0 / 116.0) + 3.0 * delta2;
+
+    colors->alpha[i] = x * X2;
+    colors->beta[i] = y * Y2;
+    colors->gamma[i] = z * Z2;
+  }
+  xyz_to_srgb(colors);
 }

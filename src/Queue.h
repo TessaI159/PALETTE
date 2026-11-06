@@ -6,11 +6,11 @@
 #include <stdint.h>
 
 struct Queue {
-	size_t cap;
-	void **buffer;
-	size_t head;
-	size_t tail;
-	size_t mask;
+    size_t cap;
+    void **buffer;
+    size_t head;
+    size_t tail;
+    size_t mask;
 };
 
 /**
@@ -99,43 +99,43 @@ bool Queue_push(struct Queue *q, void *obj);
 void *Queue_pop(struct Queue *q);
 
 /**
-*@brief Check if the queue is full
-*
-*@param q A pointer to the queue which you want to check
-*
-*@return true if the queue is full, false elsewise
-*
-**/
+ *@brief Check if the queue is full
+ *
+ *@param q A pointer to the queue which you want to check
+ *
+ *@return true if the queue is full, false elsewise
+ *
+ **/
 bool Queue_is_full(const struct Queue *q);
 
 /**
-*@brief Check if the queue is empty
-*
-*@param q A pointer to the queue which you want to check
-*
-*@return true if the queue is empty, false elsewise
-*
-**/
-bool  Queue_is_empty(const struct Queue *q);
+ *@brief Check if the queue is empty
+ *
+ *@param q A pointer to the queue which you want to check
+ *
+ *@return true if the queue is empty, false elsewise
+ *
+ **/
+bool Queue_is_empty(const struct Queue *q);
 
 /**
-*@brief Check the size of the queue
-*
-*@param q A pointer to the queue which you want to check
-*
-*@return A size_t which correlates to the number of elements on the queue
-*
-**/
+ *@brief Check the size of the queue
+ *
+ *@param q A pointer to the queue which you want to check
+ *
+ *@return A size_t which correlates to the number of elements on the queue
+ *
+ **/
 size_t Queue_size(const struct Queue *q);
 
 /**
-*@brief Check the number of empty slots on the queue
-*
-*@param q A pointer to the queue which you want to check
-*
-*@return A size_t which correlates to the number of empty slots on the queue
-*
-**/
+ *@brief Check the number of empty slots on the queue
+ *
+ *@param q A pointer to the queue which you want to check
+ *
+ *@return A size_t which correlates to the number of empty slots on the queue
+ *
+ **/
 size_t Queue_empty_slots(const struct Queue *q);
 
 #endif
