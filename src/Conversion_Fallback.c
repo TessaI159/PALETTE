@@ -163,11 +163,11 @@ void cielab_to_srgb_fb(struct Color *restrict colors) {
     const double fz = fy - b / 200.0;
 
     const double x =
-        (CUBE(fx) > delta3) ? CUBE(fx) : (fx - 16.0 / 116.0) + 3.0 * delta2;
+        (CUBE(fx) > delta3) ? CUBE(fx) : (fx - 16.0 / 116.0) * 3.0 * delta2;
     const double y =
-        (CUBE(fy) > delta3) ? CUBE(fy) : (fy - 16.0 / 116.0) + 3.0 * delta2;
+        (CUBE(fy) > delta3) ? CUBE(fy) : (fy - 16.0 / 116.0) * 3.0 * delta2;
     const double z =
-        (CUBE(fz) > delta3) ? CUBE(fz) : (fz - 16.0 / 116.0) + 3.0 * delta2;
+        (CUBE(fz) > delta3) ? CUBE(fz) : (fz - 16.0 / 116.0) * 3.0 * delta2;
 
     colors->alpha[i] = x * X2;
     colors->beta[i] = y * Y2;

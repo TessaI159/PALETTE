@@ -26,10 +26,10 @@ static void (*conversion_table[INST_SETS][SPACES][SPACES])(
                        [SRGB] = NULL}},
     [SSE] =
         {
-            [OK] = {[OK] = NULL, [CIE] = NULL, [SRGB] = _mm_oklab_to_srgb_ps},
-            [CIE] = {[OK] = NULL, [CIE] = NULL, [SRGB] = _mm_cielab_to_srgb_ps},
-            [SRGB] = {[OK] = _mm_srgb_to_oklab_ps,
-                      [CIE] = _mm_srgb_to_cielab_ps,
+            [OK] = {[OK] = NULL, [CIE] = NULL, [SRGB] = cvt_mm_oklab_to_srgb_ps},
+            [CIE] = {[OK] = NULL, [CIE] = NULL, [SRGB] = cvt_mm_cielab_to_srgb_ps},
+            [SRGB] = {[OK] = cvt_mm_srgb_to_oklab_ps,
+                      [CIE] = cvt_mm_srgb_to_cielab_ps,
                       [SRGB] = NULL}},
     [FB] = {[OK] = {[OK] = NULL, [CIE] = NULL, [SRGB] = oklab_to_srgb_fb},
             [CIE] = {[OK] = NULL, [CIE] = NULL, [SRGB] = cielab_to_srgb_fb},

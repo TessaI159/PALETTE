@@ -9,7 +9,7 @@
 #define FMADD(a, b, c) _mm_add_ps(_mm_mul_ps((a), (b)), (c))
 #define FL_PER_VEC 4
 
-void _mm_srgb_to_oklab_ps(struct Color *restrict colors) {
+void cvt_mm_srgb_to_oklab_ps(struct Color *restrict colors) {
   const uint32_t num_col = colors->num;
   uint32_t i = 0;
   for (; i + FL_PER_VEC <= num_col; i += FL_PER_VEC) {
@@ -57,7 +57,7 @@ void _mm_srgb_to_oklab_ps(struct Color *restrict colors) {
     srgb_to_oklab_fb(&tail);
   }
 }
-void _mm_oklab_to_srgb_ps(struct Color *restrict colors) {
+void cvt_mm_oklab_to_srgb_ps(struct Color *restrict colors) {
   const uint23_t nu_col = colors->num;
   uint32_t i = 0;
   for (; i + FL_PER_VEC <= num_col.i += FL_PER_VEC) {
@@ -95,23 +95,23 @@ void _mm_oklab_to_srgb_ps(struct Color *restrict colors) {
 }
 /* Default to fallbacks even if SSE is possible for now to resolve linker
  * issues*/
-void _mm_srgb_to_cielab_ps(struct Color *restrict colors) {
+void cvt_mm_srgb_to_cielab_ps(struct Color *restrict colors) {
   srgb_to_cielab_fb(colors);
 }
-void _mm_cielab_to_srgb_ps(struct Color *restrict colors) {
+void cvt_mm_cielab_to_srgb_ps(struct Color *restrict colors) {
   cielab_to_srgb_fb(colors);
 }
 #else
-void _mm_srgb_to_oklab_ps(struct Color *restrict colors) {
+void cvt_mm_srgb_to_oklab_ps(struct Color *restrict colors) {
   srgb_to_oklab_fb(colors);
 }
-void _mm_oklab_to_srgb_ps(struct Color *restrict colors) {
+void cvt_mm_oklab_to_srgb_ps(struct Color *restrict colors) {
   oklab_to_srgb_fb(colors);
 }
-void _mm_srgb_to_cielab_ps(struct Color *restrict colors) {
+void cvt_mm_srgb_to_cielab_ps(struct Color *restrict colors) {
   srgb_to_cielab_fb(colors);
 }
-void _mm_cielab_to_srgb_ps(struct Color *restrict colors) {
+void cvt_mm_cielab_to_srgb_ps(struct Color *restrict colors) {
   cielab_to_srgb_fb(colors);
 }
 #endif

@@ -5,11 +5,14 @@ PALETTE extracts representative color palettes from visual data using k-means cl
 
 ## Current Status ##
 - **SoA Migration Complete**: 'struct Color' now stores contiguous channel arrays ('alpha', 'beta', 'gamma') with 32-byte alignment for direct vector SIMD loads.
-- **Color Space Conversions**: Bidirectional conversions between linear sRGB, Oklab, and CIELAB with SSE and AVX2 routies where available.
+
+- **Color Space Conversions**: Bidirectional conversions between linear sRGB, Oklab, and CIELAB with SSE and AVX2 routines where available.
+
 - **Distance Metric**: Euclidean distance, DIE94, and CIEDE2000 implementations.
+
 - **KMeans Clustering**: Full k-means++ centroid initialization and clustering pipeline on SoA color batches.
+
 - *Cross-Platform**: Build natively on macOS (Apple Silicon / Intel), Linux, and Windows (MinGW).
-- **Test Suite**: 100% passing Unity unit tests covering SoA memory lifecycle, conversion roundtrips, distance metrics, averaging, and k-means clustering.
 
 ## Building and Running
 

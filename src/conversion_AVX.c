@@ -8,11 +8,11 @@
 /* Default to SSE even if AVX is available for now to resolve linker
  * issues */
 void _mm256_srgb_to_oklab_ps(struct Color *restrict colors) {
-  _mm_srgb_to_oklab_ps(colors);
+  cvt_mm_srgb_to_oklab_ps(colors);
 }
 
 void _mm256_oklab_to_srgb_ps(struct Color *restrict colors) {
-  _mm_oklab_to_srgb_ps(colors);
+  cvt_mm_oklab_to_srgb_ps(colors);
 }
 
 /* Default to fallbacks even if AVX is available for now to resolve linker
