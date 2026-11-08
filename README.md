@@ -4,9 +4,9 @@
 PALETTE extracts representative color palettes from visual data using k-means clustering in perceptually uniform color spaces.
 
 ## Current Status ##
-- **SoA Migration Complete **: 'struct Color' now stores contiguous channel arrays ('alpha', 'beta', 'gamma') with 32-byte alignment for direct vector SIMD loads.
+- **SoA Migration Complete**: 'struct Color' now stores contiguous channel arrays ('alpha', 'beta', 'gamma') with 32-byte alignment for direct vector SIMD loads.
 - **Color Space Conversions**: Bidirectional conversions between linear sRGB, Oklab, and CIELAB with SSE and AVX2 routies where available.
-- **Distance Metricx**: Euclidean distance, DIE94, and CIEDE2000 implementations.
+- **Distance Metric**: Euclidean distance, DIE94, and CIEDE2000 implementations.
 - **KMeans Clustering**: Full k-means++ centroid initialization and clustering pipeline on SoA color batches.
 - *Cross-Platform**: Build natively on macOS (Apple Silicon / Intel), Linux, and Windows (MinGW).
 - **Test Suite**: 100% passing Unity unit tests covering SoA memory lifecycle, conversion roundtrips, distance metrics, averaging, and k-means clustering.
@@ -25,8 +25,8 @@ cmake --build build
 ./build/PALETTE
 ```
 
-
 ### Run Unit Tests
+>>>>>>> 938b3ad41f48a9d6c0cdcbc99e67c50395f2844f
 ```bash
 ctest --test-dir build --output-on-failure
 # or run directly
@@ -38,5 +38,7 @@ ctest --test-dir build --output-on-failure
 ```python
 python generate_test_images.py
 ```
+
+
 
 
