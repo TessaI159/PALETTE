@@ -83,6 +83,8 @@ endif()
 
 # ---- Main App Sources ----
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.c)
+list(FILTER SOURCES EXCLUDE REGEX "/\\.#[^/]*$")
+list(FILTER IMPL_SOURCES EXCLUDE REGEX "/\\.#[^/]*$")
 list(FILTER SOURCES EXCLUDE REGEX "/src/test/.*\\.c$")
 list(FILTER SOURCES EXCLUDE REGEX "/src/trig_test\\.c$")
 list(FILTER SOURCES EXCLUDE REGEX "/src/pow_speed_test\\.c$")
@@ -128,6 +130,8 @@ if(PALETTE_BUILD_TESTS)
 
   # Implementation sources: everything except the app's main() and test/bench files.
   file(GLOB_RECURSE IMPL_SOURCES CONFIGURE_DEPENDS src/*.c)
+  list(FILTER SOURCES EXCLUDE REGEX "/\\.#[^/]*$")
+  list(FILTER IMPL_SOURCES EXCLUDE REGEX "/\\.#[^/]*$")
   list(FILTER IMPL_SOURCES EXCLUDE REGEX "/src/trig_test\\.c$")
   list(FILTER IMPL_SOURCES EXCLUDE REGEX "/src/pow_speed_test\\.c$")
   list(FILTER IMPL_SOURCES EXCLUDE REGEX "/src/main\\.c$")
@@ -137,6 +141,8 @@ if(PALETTE_BUILD_TESTS)
   endif()
 
   file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS src/test/*.c)
+  list(FILTER SOURCES EXCLUDE REGEX "/\\.#[^/]*$")
+  list(FILTER IMPL_SOURCES EXCLUDE REGEX "/\\.#[^/]*$")
   message(STATUS "Test sources: ${TEST_SOURCES}")
 
   add_executable(unit_tests ${TEST_SOURCES} ${IMPL_SOURCES})

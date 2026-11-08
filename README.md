@@ -19,16 +19,24 @@ PALETTE extracts representative color palettes from visual data using k-means cl
 - *(Optional)* FFMpeg libraries ('libavformat', 'libavcodec', 'libavutil', 'libswscale') for video decoding.
 
 ### Build and Run Main Demo
-'''bash
+```bash
 cmake -B build
 cmake --build build
 ./build/PALETTE
-'''
+```
 
 
-$$$ Run Unit Tests
-'''bash
+### Run Unit Tests
+```bash
 ctest --test-dir build --output-on-failure
 # or run directly
 ./build/unit_tests
-'''
+```
+
+### Generate Testing Images
+(Requires numpy)
+```python
+python generate_test_images.py
+```
+
+

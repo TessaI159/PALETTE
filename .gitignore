@@ -14,3 +14,4 @@ src/*.log
 src/pow_speed_test*
 src/.#*
 src/*.txt
+src/*.csv
