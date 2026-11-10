@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -11,6 +12,7 @@
 
 void cielab_avg_fb(const struct Color *restrict colors,
                    struct Color *restrict cents, uint8_t which_cent) {
+  assert(colors->num <= UINT16_MAX);
   const uint16_t num_col = colors->num;
   if (num_col == 0)
     return;
@@ -56,6 +58,7 @@ void cielab_avg_fb(const struct Color *restrict colors,
 
 void cielab_avg_fb_cw(const struct Color *restrict colors,
                       struct Color *restrict cents, uint8_t which_cent) {
+  assert(colors->num <= UINT16_MAX);
   const uint16_t num_col = colors->num;
   if (num_col == 0)
     return;
@@ -94,7 +97,8 @@ void cielab_avg_fb_cw(const struct Color *restrict colors,
 
 void oklab_avg_fb(const struct Color *restrict colors,
                   struct Color *restrict cents, uint8_t which_cent) {
-  uint16_t num_col = colors->num;
+  assert(colors->num <= UINT16_MAX);
+  const uint16_t num_col = colors->num;
   float l1, l2, l3, l4;
   float a1, a2, a3, a4;
   float b1, b2, b3, b4;
@@ -130,8 +134,8 @@ void oklab_avg_fb(const struct Color *restrict colors,
   float l = l1 + l2 + l3 + l4;
   float a = a1 + a2 + a3 + a4;
   float b = b1 + b2 + b3 + b4;
-  float scale = 1.0f / num_col;
 
+  const float scale = 1.0f / num_col;
   cents->alpha[which_cent] = l * scale;
   cents->beta[which_cent] = a * scale;
   cents->gamma[which_cent] = b * scale;
@@ -139,7 +143,8 @@ void oklab_avg_fb(const struct Color *restrict colors,
 
 void oklab_avg_fb_cw(const struct Color *restrict colors,
                      struct Color *restrict cents, uint8_t which_cent) {
-  uint16_t num_col = colors->num;
+  assert(colors->num <= UINT16_MAX);
+  const uint16_t num_col = colors->num;
   float l = 0.0f;
   float a = 0.0f;
   float b = 0.0f;

@@ -21,7 +21,7 @@ struct Queue {
  * default minimum capacity of 2 is used. Internally, the capacity is rounded up
  * to the nearest power of two - 1.
  *
- *@param q A pointer to a pre-allocated Queue struct to initializes
+ *@param q A pointer to a pre-allocated Queue struct to initialize
  *@param The desired capacity of the queue
  *
  *@return true if the queue was successfully initialized, false if not
@@ -49,12 +49,11 @@ bool Queue_create(struct Queue *q, size_t cap);
  *
  *@param q A pointer to the Queue struct to be destroyed
  *
- *@return Nothing
  **/
 void Queue_destroy(struct Queue *q);
 
 /**
- *@brief Destroys a circular queue with a customer destructor function
+ *@brief Destroys a circular queue with a custom destructor function
  *
  * This function destroys the queue, as well as any items that may be left in
  * the queue when called. Uses destroy to release any queue elements.
@@ -62,7 +61,6 @@ void Queue_destroy(struct Queue *q);
  *@param q A pointer to the Queue struct to be destroyed
  *@param (*destroy) A custom destructor function
  *
- *@return Nothing
  *
  *@note calling Queue_destroy_with(q, free) is equivalent to calling
  *Queue_destroy(q);

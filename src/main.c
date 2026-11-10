@@ -14,6 +14,8 @@
 
 /* TODO (Tess): Consider throwing GPU compute capabilities in here somewhere */
 /* TODO (Tess): Fix your naming convention, for god's sake */
+/* TODO (Tess): Track the state of a particular Color object to avoid
+   converting when unnecessary */
 static const char *inst_set_name(enum InstSet inst) {
   switch (inst) {
   case AVX:

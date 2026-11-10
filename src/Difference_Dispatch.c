@@ -67,5 +67,5 @@ static inline void check_initialized() {
 void delta_diff(const struct Color *restrict colors,
                 const struct Color *restrict cents, float *restrict diffs) {
   check_initialized();
-  return delta_diff_intern(colors, cents, diffs);
+  delta_diff_intern(colors, cents, diffs);
 }

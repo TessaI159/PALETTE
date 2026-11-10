@@ -18,20 +18,18 @@
 #define DEG2RAD(x) (((x) / (180.0)) * (M_PI))
 #define RAD2DEG(x) (((x) / M_PI) * (180.0))
 
-/* row * num_col + col */
-/* Colors are columns, Centroids are rows */
 void delta_lab_euc_diff_fallback(const struct Color *restrict colors,
                                  const struct Color *restrict cents,
                                  float *restrict diffs) {
   const uint32_t num_col = colors->num;
   const uint32_t num_cent = cents->num;
 
-  for (size_t i = 0; i < num_col; ++i) {
-    for (size_t j = 0; j < num_cent; ++j) {
-      diffs[j * num_col + i] =
-          sqrtf(SQUARE(colors->alpha[i] - cents->alpha[j]) +
-                SQUARE(colors->beta[i] - cents->beta[j]) +
-                SQUARE(colors->gamma[i] - cents->gamma[j]));
+  for (size_t j = 0; j < num_cent; ++j) {
+    float *restrict row = diffs + j * num_col;
+    for (size_t i = 0; i < num_col; ++i) {
+      row[i] = sqrtf(SQUARE(colors->alpha[i] - cents->alpha[j]) +
+                     SQUARE(colors->beta[i] - cents->beta[j]) +
+                     SQUARE(colors->gamma[i] - cents->gamma[j]));
     }
   }
 }

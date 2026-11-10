@@ -9,7 +9,7 @@
 struct Image {
   uint32_t w;
   uint32_t h;
-  uint8_t *rgb; /* Interleaved RGB24 buffer: w * h * 3 bytes */
+  uint8_t *rgb; /**< Interleaved RGB24 buffer: w * h * 3 bytes */
 };
 
 /**
@@ -45,6 +45,7 @@ bool Image_to_color_soa(const struct Image *img, uint32_t max_samples,
  * @param palette Extracted centroids in sRGB space.
  * @param swatch_width Width of each color swatch.
  * @param swatch_height Height of each color swatch.
+ * @return true on success, false on failure.
  */
 bool Image_save_palette_swatch_ppm(const char *filename,
                                    const struct Color *restrict palette,

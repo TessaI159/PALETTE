@@ -327,21 +327,6 @@ bool Image_to_color_soa(const struct Image *img, uint32_t max_samples,
   srgb_linearize(out_colors);
   return true;
 }
-
-/* Convert a linear-light value in [0, 1] to an 8-bit sRGB value.
-   ASSUMPTION: the palette is stored in linear RGB (as produced by
-   Image_to_color_soa). If your palette is already sRGB, replace the body
-   with a plain clamp-and-scale. */
-static inline uint8_t linear_to_srgb8(float c) {
-  if (!(c > 0.0f)) /* also catches NaN */
-    c = 0.0f;
-  if (c > 1.0f)
-    c = 1.0f;
-  float s =
-      (c <= 0.0031308f) ? 12.92f * c : 1.055f * powf(c, 1.0f / 2.4f) - 0.055f;
-  return (uint8_t)(s * 255.0f + 0.5f);
-}
-
 bool Image_save_palette_swatch_ppm(const char *filename,
                                    const struct Color *palette,
                                    uint32_t swatch_width,

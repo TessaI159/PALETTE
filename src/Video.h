@@ -2,6 +2,8 @@
 #define VIDEO_H
 #include <stdint.h>
 
+/* TODO (Tess): Document */
+
 typedef struct AVFormatContext AVFormatContext;
 typedef struct AVCodecContext AVCodecContext;
 typedef struct AVStream AVStream;
