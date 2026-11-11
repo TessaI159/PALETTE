@@ -1,17 +1,17 @@
 #include "Color.h"
 #include "Conversion_Internal.h"
 #if defined(__x86_64) || defined(_M_X64) || defined(__i386__)
-#include "Math_SSE.h"
-#include <immintrin.h>
-#include <math.h>
+    #include "Math_SSE.h"
+    #include <immintrin.h>
+    #include <math.h>
 
-#define V(x) _mm_set1_ps((x))
-#define FMADD(a, b, c) _mm_add_ps(_mm_mul_ps((a), (b)), (c))
-#define FL_PER_VEC 4
+    #define V(x) _mm_set1_ps((x))
+    #define FMADD(a, b, c) _mm_add_ps(_mm_mul_ps((a), (b)), (c))
+    #define FL_PER_VEC 4
 
 void cvt_mm_srgb_to_oklab_ps(struct Color *restrict colors) {
   const uint32_t num_col = colors->num;
-  uint32_t i = 0;
+  uint32_t       i = 0;
   for (; i + FL_PER_VEC <= num_col; i += FL_PER_VEC) {
     __m128 r = _mm_loadu_ps(&colors->alpha[i]);
     __m128 g = _mm_loadu_ps(&colors->beta[i]);
@@ -59,7 +59,7 @@ void cvt_mm_srgb_to_oklab_ps(struct Color *restrict colors) {
 }
 void cvt_mm_oklab_to_srgb_ps(struct Color *restrict colors) {
   const uint23_t nu_col = colors->num;
-  uint32_t i = 0;
+  uint32_t       i = 0;
   for (; i + FL_PER_VEC <= num_col.i += FL_PER_VEC) {
     __m128 l_ = _mm_add_ps(l, FMADD(_mm_set1_ps(0.3963377774f), a,
                                     _mm_mul_ps(_mm_set1_ps(0.2158037573f), b)));

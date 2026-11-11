@@ -1,5 +1,5 @@
 #ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
+    #define _USE_MATH_DEFINES
 #endif
 
 #include <math.h>
@@ -9,19 +9,19 @@
 
 #if (defined(x86_64__) || defined(_M_X64) || defined(__i386__))
 &&defined(__AVX__)
-#include <immintrin.h>
+    #include <immintrin.h>
 
-#define SQUARE_SCALAR(x) ((x) * (x))
-#define POW_7_SCALAR(x) ((x) * (x) * (x) * (x) * (x) * (x) * (x))
-#define DEG2RAD(x) (((x) / (180.0)) * (M_PI))
-#define RAD2DEG(x) (((x) / M_PI) * (180.0))
-#define _mm256_abs_ps(x)                                                       \
-  _mm256_and_ps((x), _mm256_castsi256_ps(_mm256_set1_epi32(0x7FFFFFFF)))
-#define FL_PER_V256EC 8
-#define _MM256_PI 3.14159265f
-#define _MM256_2PI 6.28318531f
-#define _MM256_PI_2 1.57079633f
-#define _MM256_1_OV256ER_2PI 0.159154943f
+    #define SQUARE_SCALAR(x) ((x) * (x))
+    #define POW_7_SCALAR(x) ((x) * (x) * (x) * (x) * (x) * (x) * (x))
+    #define DEG2RAD(x) (((x) / (180.0)) * (M_PI))
+    #define RAD2DEG(x) (((x) / M_PI) * (180.0))
+    #define _mm256_abs_ps(x)                                                   \
+    _mm256_and_ps((x), _mm256_castsi256_ps(_mm256_set1_epi32(0x7FFFFFFF)))
+    #define FL_PER_V256EC 8
+    #define _MM256_PI 3.14159265f
+    #define _MM256_2PI 6.28318531f
+    #define _MM256_PI_2 1.57079633f
+    #define _MM256_1_OV256ER_2PI 0.159154943f
 
     static inline __m256 pow7(__m256 x) {
   __m256 x2 = _mm256_mul_ps(x, x);
@@ -29,7 +29,9 @@
   return _mm256_mul_ps(x, _mm256_mul_ps(x2, x4));
 }
 
-static inline __m256 square(__m256 x) { return _mm256_mul_ps(x, x); }
+static inline __m256 square(__m256 x) {
+  return _mm256_mul_ps(x, x);
+}
 
 static inline __m256 deg_to_rad(__m256 x) {
   return _mm256_mul_ps(_mm256_div_ps(x, _mm256_set1_ps(180.0f)),
@@ -41,7 +43,9 @@ static inline __m256 rad_to_deg(__m256 x) {
                        _mm256_set1_ps(180.0f));
 }
 
-static inline __m256 V256(float x) { return _mm256_set1_ps(x); }
+static inline __m256 V256(float x) {
+  return _mm256_set1_ps(x);
+}
 
 static inline void
 compute_tail(const struct Color *restrict colors,
@@ -50,8 +54,8 @@ compute_tail(const struct Color *restrict colors,
                                   const struct Color *restrict, int, int)) {
   const uint32_t num_col = colors->num;
   const uint32_t num_cent = cents->num;
-  size_t col_not_comp = num_col - (num_col % FL_PER_V256EC);
-  size_t cent_not_comp = num_cent - (num_cent % FL_PER_V256EC);
+  size_t         col_not_comp = num_col - (num_col % FL_PER_V256EC);
+  size_t         cent_not_comp = num_cent - (num_cent % FL_PER_V256EC);
   for (size_t i = col_not_comp; i < num_col; ++i) {
     for (size_t j = 0; j < num_cent; ++j) {
       diffs[j * num_col + i] = scalar_diff(colors, cents, i, j);
@@ -191,7 +195,7 @@ static inline __m256 _mm256_cos_ps(__m256 x) {
  */
 static inline __m256 _mm256_exp_ps(__m256 x) {
   x = _mm256_min_ps(_mm256_max_ps(x, V256(-87.33654)), V256(88.72283));
-  __m256 a = V256(12102203.0f); /* (1 << 23) / log(2) */
+  __m256  a = V256(12102203.0f); /* (1 << 23) / log(2) */
   __m256i b = _mm256_set1_epi32(127 * (1 << 23) - 298765);
   __m256i t = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_mul_ps(a, x)), b);
   return _mm256_castsi256_ps(t);
@@ -363,9 +367,9 @@ void delta_cie94_diff_avx(const struct Color *restrict colors,
                           float *restrict diffs) {
   const uint32_t num_col = colors->num;
   const uint32_t num_cent = cents->num;
-  const __m256 K1 = V256(0.045);
-  const __m256 K2 = V256(0.015);
-  const __m256 zero = V256(0.0f);
+  const __m256   K1 = V256(0.045);
+  const __m256   K2 = V256(0.015);
+  const __m256   zero = V256(0.0f);
 
   for (size_t i = 0; i + FL_PER_V256EC <= num_col; i += FL_PER_V256EC) {
     for (size_t j = 0; j + FL_PER_V256EC <= num_cent; j += FL_PER_V256EC) {
@@ -409,11 +413,11 @@ void delta_ciede2000_diff_avx(const struct Color *restrict colors,
                               float *restrict diffs) {
   const uint32_t num_col = colors->num;
   const uint32_t num_cent = cents->num;
-  const __m256 zero = V256(0.0f);
-  const __m256 one = V256(1.0f);
-  const __m256 two = V256(2.0f);
-  const __m256 c180 = V256(180.0f);
-  const __m256 c360 = V256(360.0f);
+  const __m256   zero = V256(0.0f);
+  const __m256   one = V256(1.0f);
+  const __m256   two = V256(2.0f);
+  const __m256   c180 = V256(180.0f);
+  const __m256   c360 = V256(360.0f);
 
   for (size_t i = 0; i + FL_PER_V256EC <= num_col; i += FL_PER_V256EC) {
     for (size_t j = 0; j + FL_PER_V256EC <= num_cent; j += FL_PER_V256EC) {
@@ -439,8 +443,8 @@ void delta_ciede2000_diff_avx(const struct Color *restrict colors,
       const __m256 a2p = _mm256_mul_ps(_mm256_add_ps(one, g), a2);
       const __m256 C1p = _mm256_sqrt_ps(_mm256_add_ps(square(a1p), square(b1)));
       const __m256 C2p = _mm256_sqrt_ps(_mm256_add_ps(square(a2p), square(b2)));
-      __m256 mask = _mm256_and_ps(_mm256_cmp_ps(b1, zero, _CMP_EQ_OQ),
-                                  _mm256_cmp_ps(a1p, zero, _CMP_EQ_OQ));
+      __m256       mask = _mm256_and_ps(_mm256_cmp_ps(b1, zero, _CMP_EQ_OQ),
+                                        _mm256_cmp_ps(a1p, zero, _CMP_EQ_OQ));
       const __m256 h1p =
           _mm256_blendv_ps(rad_to_deg(_mm256_atan2_ps(b1, a1p)), zero, mask);
       mask = _mm256_and_ps(_mm256_cmp_ps(a2p, zero, _CMP_EQ_OQ),
@@ -451,7 +455,7 @@ void delta_ciede2000_diff_avx(const struct Color *restrict colors,
       /* Step 2: Find dLp, dCp, dHp */
       const __m256 dLp = _mm256_sub_ps(L2, L1);
       const __m256 dCp = _mm256_sub_ps(C2p, C1p);
-      __m256 dhp = _mm256_setzero_ps();
+      __m256       dhp = _mm256_setzero_ps();
       mask = _mm256_and_ps(
           _mm256_cmp_ps(_mm256_mul_ps(C1p, C2p), zero, _CMP_NEQ_OQ),
           _mm256_cmp_ps(_mm256_abs_ps(_mm256_sub_ps(h2p, h1p)), c180,

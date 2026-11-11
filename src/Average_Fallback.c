@@ -99,9 +99,9 @@ void oklab_avg_fb(const struct Color *restrict colors,
                   struct Color *restrict cents, uint8_t which_cent) {
   assert(colors->num <= UINT16_MAX);
   const uint16_t num_col = colors->num;
-  float l1, l2, l3, l4;
-  float a1, a2, a3, a4;
-  float b1, b2, b3, b4;
+  float          l1, l2, l3, l4;
+  float          a1, a2, a3, a4;
+  float          b1, b2, b3, b4;
   l1 = l2 = l3 = l4 = 0.0f;
   a1 = a2 = a3 = a4 = 0.0f;
   b1 = b2 = b3 = b4 = 0.0f;
@@ -145,13 +145,13 @@ void oklab_avg_fb_cw(const struct Color *restrict colors,
                      struct Color *restrict cents, uint8_t which_cent) {
   assert(colors->num <= UINT16_MAX);
   const uint16_t num_col = colors->num;
-  float l = 0.0f;
-  float a = 0.0f;
-  float b = 0.0f;
-  float w = 0.0f;
-  float chroma = 0.0f;
-  float tmpa;
-  float tmpb;
+  float          l = 0.0f;
+  float          a = 0.0f;
+  float          b = 0.0f;
+  float          w = 0.0f;
+  float          chroma = 0.0f;
+  float          tmpa;
+  float          tmpb;
 
   size_t i = 0;
   for (; i < num_col; ++i) {

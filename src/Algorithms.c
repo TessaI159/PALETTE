@@ -33,7 +33,7 @@ static inline void assign_pixels(struct kmeans_result *result, float *diffs,
   float total_inertia = 0.0f;
   for (uint32_t i = 0; i < n; ++i) {
     uint8_t best_j = 0;
-    float min_d = diffs[0 * n + i];
+    float   min_d = diffs[0 * n + i];
     for (uint8_t j = 1; j < k; ++j) {
       float d = diffs[j * n + i];
       if (d < min_d) {
@@ -53,7 +53,7 @@ bool kmeans_run(const struct Color *colors, const struct kmeans_params *params,
     return false;
 
   uint32_t n = colors->num;
-  uint8_t k = params->k;
+  uint8_t  k = params->k;
   if (k > n)
     k = (uint8_t)n;
 
@@ -117,7 +117,7 @@ bool kmeans_run(const struct Color *colors, const struct kmeans_params *params,
     }
     double threshold =
         ((double)(xorshift32(&prng_state) % 1000000) / 1000000.0) * sum_dist_sq;
-    double running = 0.0;
+    double   running = 0.0;
     uint32_t chosen = n - 1;
     for (uint32_t i = 0; i < n; ++i) {
       float min_d = diffs[0 * n + i];
@@ -139,8 +139,8 @@ bool kmeans_run(const struct Color *colors, const struct kmeans_params *params,
 
   /* The actual KMeans algorithm */
   uint32_t max_iters = params->max_iters > 0 ? params->max_iters : 50;
-  float tol = params->tolerance > 0.0f ? params->tolerance : 1e-4f;
-  float tol_sq = SQUARE(tol);
+  float    tol = params->tolerance > 0.0f ? params->tolerance : 1e-4f;
+  float    tol_sq = SQUARE(tol);
 
   for (uint32_t iter = 0; iter < max_iters; ++iter) {
     result->iters_run = iter + 1;
@@ -168,8 +168,8 @@ bool kmeans_run(const struct Color *colors, const struct kmeans_params *params,
         color_avg(&cluster_scratch, &new_cents, j);
       } else {
         /*  Cluster is empty. Re-seed to a new random pixel. */
-        /* TODO (Tess): Make sure the new random color doesn't accidentaly
-           match another centroid exactly. */
+        /* TODO (Tess): Make sure the new random color doesn't
+           accidentaly match another centroid exactly. */
         uint32_t rand_idx = xorshift32(&prng_state) % n;
         new_cents.alpha[j] = colors->alpha[rand_idx];
         new_cents.beta[j] = colors->beta[rand_idx];

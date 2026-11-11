@@ -2,7 +2,9 @@
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__)
 
-static inline __m128 V(float x) { return _mm_set1_ps(x); }
+static inline __m128 V(float x) {
+  return _mm_set1_ps(x);
+}
 
 inline __m128 _mm_pow7_ps(__m128 x) {
   __m128 x2 = _mm_mul_ps(x, x);
@@ -10,7 +12,9 @@ inline __m128 _mm_pow7_ps(__m128 x) {
   return _mm_mul_ps(x, _mm_mul_ps(x2, x4));
 }
 
-inline __m128 _mm_square_ps(__m128 x) { return _mm_mul_ps(x, x); }
+inline __m128 _mm_square_ps(__m128 x) {
+  return _mm_mul_ps(x, x);
+}
 
 inline __m128 _mm_deg_to_rad_ps(__m128 x) {
   return _mm_mul_ps(_mm_div_ps(x, _mm_set1_ps(180.0f)), _mm_set1_ps(_MM_PI));

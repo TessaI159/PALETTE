@@ -111,7 +111,7 @@ static bool load_ppm(struct Image *img, FILE *fp, int format) {
       Image_free(img);
       return false;
     }
-    size_t raw_size = samples * bps;
+    size_t   raw_size = samples * bps;
     uint8_t *raw = (uint8_t *)malloc(raw_size);
     if (!raw) {
       Image_free(img);
@@ -157,14 +157,14 @@ struct bmp_file_header {
 
 struct bmp_info_header {
   uint32_t biSize;
-  int32_t biWidth;
-  int32_t biHeight;
+  int32_t  biWidth;
+  int32_t  biHeight;
   uint16_t biPlanes;
   uint16_t biBitCount;
   uint32_t biCompression;
   uint32_t biSizeImage;
-  int32_t biXPelsPerMeter;
-  int32_t biYPelsPerMeter;
+  int32_t  biXPelsPerMeter;
+  int32_t  biYPelsPerMeter;
   uint32_t biClrUsed;
   uint32_t biClrImportant;
 };
@@ -197,7 +197,7 @@ static bool load_bmp(struct Image *img, FILE *fp) {
 
   uint32_t w = (uint32_t)bih.biWidth;
   uint32_t h = (uint32_t)(bih.biHeight > 0 ? bih.biHeight : -bih.biHeight);
-  bool top_down = bih.biHeight < 0;
+  bool     top_down = bih.biHeight < 0;
 
   uint32_t bytes_per_pixel = bih.biBitCount / 8;
   if ((size_t)w > (SIZE_MAX - 3) / bytes_per_pixel)
@@ -226,8 +226,8 @@ static bool load_bmp(struct Image *img, FILE *fp) {
       return false;
     }
 
-    /* row_buf and img->rgb are separate allocations, so the accesses through
-       src and dest never overlap. */
+    /* row_buf and img->rgb are separate allocations, so the accesses
+       through src and dest never overlap. */
     const uint8_t *restrict src = row_buf;
     uint8_t *restrict dest = img->rgb + (size_t)target_y * w * 3;
     for (uint32_t x = 0; x < w; ++x) {
@@ -282,7 +282,7 @@ bool Image_save_ppm(const struct Image *img, const char *filename) {
     return false;
 
   size_t total_pixels = (size_t)img->w * img->h;
-  bool ok =
+  bool   ok =
       fprintf(fp, "P6\n%" PRIu32 " %" PRIu32 "\n255\n", img->w, img->h) > 0;
   if (ok)
     ok = fwrite(img->rgb, 3, total_pixels, fp) == total_pixels;
@@ -296,7 +296,7 @@ bool Image_to_color_soa(const struct Image *img, uint32_t max_samples,
   if (!img || !img->rgb || img->w == 0 || img->h == 0 || !out_colors)
     return false;
 
-  size_t total_pixels = (size_t)img->w * img->h;
+  size_t   total_pixels = (size_t)img->w * img->h;
   uint32_t n;
   if (max_samples > 0 && max_samples < total_pixels)
     n = max_samples;
@@ -327,10 +327,10 @@ bool Image_to_color_soa(const struct Image *img, uint32_t max_samples,
   srgb_linearize(out_colors);
   return true;
 }
-bool Image_save_palette_swatch_ppm(const char *filename,
+bool Image_save_palette_swatch_ppm(const char         *filename,
                                    const struct Color *palette,
-                                   uint32_t swatch_width,
-                                   uint32_t swatch_height) {
+                                   uint32_t            swatch_width,
+                                   uint32_t            swatch_height) {
   if (!filename || !palette || palette->num == 0)
     return false;
   if (swatch_width == 0)

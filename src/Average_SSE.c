@@ -1,5 +1,5 @@
 #ifdef PALETTE_DEBUG
-#include <assert.h>
+    #include <assert.h>
 #endif
 #include <math.h>
 #include <stddef.h>
@@ -10,15 +10,15 @@
 #include "Color.h"
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386)
-#include <pmmintrin.h>
+    #include <pmmintrin.h>
 
-#define SQUARE(x) ((x) * (x))
+    #define SQUARE(x) ((x) * (x))
 void cielab_avg_sse(const struct Color *restrict colors,
                     struct Color *restrict cents, uint8_t which_cent) {
   uint16_t num_col = colors->num;
-  __m128 sum_l1 = _mm_setzero_ps();
-  __m128 sum_a1 = _mm_setzero_ps();
-  __m128 sum_b1 = _mm_setzero_ps();
+  __m128   sum_l1 = _mm_setzero_ps();
+  __m128   sum_a1 = _mm_setzero_ps();
+  __m128   sum_b1 = _mm_setzero_ps();
 
   __m128 sum_l2 = _mm_setzero_ps();
   __m128 sum_a2 = _mm_setzero_ps();
@@ -34,7 +34,7 @@ void cielab_avg_sse(const struct Color *restrict colors,
 
   size_t i = 0;
   for (; i + 15 < num_col; i += 16) {
-#ifdef PALETTE_DEBUG
+    #ifdef PALETTE_DEBUG
     assert(((uintptr_t)colors->alpha[i + 0] % 16) == 0);
     assert(((uintptr_t)colors->beta[i + 0] % 16) == 0);
     assert(((uintptr_t)colors->gamma[i + 0] % 16) == 0);
@@ -50,7 +50,7 @@ void cielab_avg_sse(const struct Color *restrict colors,
     assert(((uintptr_t)colors->alpha[i + 12] % 16) == 0);
     assert(((uintptr_t)colors->beta[i + 12] % 16) == 0);
     assert(((uintptr_t)colors->gamma[i + 12] % 16) == 0);
-#endif
+    #endif
     __m128 l1 = _mm_load_ps((float *)&colors->alpha[i + 0]);
     __m128 l2 = _mm_load_ps((float *)&colors->alpha[i + 4]);
     __m128 l3 = _mm_load_ps((float *)&colors->alpha[i + 8]);
@@ -116,9 +116,9 @@ void cielab_avg_sse(const struct Color *restrict colors,
 void cielab_avg_sse_cw(const struct Color *restrict colors,
                        struct Color *restrict cents, uint8_t which_cent) {
   uint16_t num_col = colors->num;
-  __m128 sum_l1 = _mm_setzero_ps();
-  __m128 sum_a1 = _mm_setzero_ps();
-  __m128 sum_b1 = _mm_setzero_ps();
+  __m128   sum_l1 = _mm_setzero_ps();
+  __m128   sum_a1 = _mm_setzero_ps();
+  __m128   sum_b1 = _mm_setzero_ps();
 
   __m128 sum_l2 = _mm_setzero_ps();
   __m128 sum_a2 = _mm_setzero_ps();
@@ -136,7 +136,7 @@ void cielab_avg_sse_cw(const struct Color *restrict colors,
 
   size_t i = 0;
   for (; i + 15 < num_col; i += 16) {
-#ifdef PALETTE_DEBUG
+    #ifdef PALETTE_DEBUG
     assert(((uintptr_t)colors->alpha[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 0] % 32) == 0);
@@ -152,7 +152,7 @@ void cielab_avg_sse_cw(const struct Color *restrict colors,
     assert(((uintptr_t)colors->alpha[i + 12] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 12] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 12] % 32) == 0);
-#endif
+    #endif
     __m128 l1 = _mm_load_ps(&colors->alpha[i + 0]);
     __m128 l2 = _mm_load_ps(&colors->alpha[i + 4]);
     __m128 l3 = _mm_load_ps(&colors->alpha[i + 8]);
@@ -246,9 +246,9 @@ void cielab_avg_sse_cw(const struct Color *restrict colors,
 void oklab_avg_sse(const struct Color *restrict colors,
                    struct Color *restrict cents, uint8_t which_cent) {
   uint16_t num_col = colors->num;
-  __m128 sum_l1 = _mm_setzero_ps();
-  __m128 sum_a1 = _mm_setzero_ps();
-  __m128 sum_b1 = _mm_setzero_ps();
+  __m128   sum_l1 = _mm_setzero_ps();
+  __m128   sum_a1 = _mm_setzero_ps();
+  __m128   sum_b1 = _mm_setzero_ps();
 
   __m128 sum_l2 = _mm_setzero_ps();
   __m128 sum_a2 = _mm_setzero_ps();
@@ -264,7 +264,7 @@ void oklab_avg_sse(const struct Color *restrict colors,
 
   size_t i = 0;
   for (; i + 15 < num_col; i += 16) {
-#ifdef PALETTE_DEBUG
+    #ifdef PALETTE_DEBUG
     assert(((uintptr_t)colors->alpha[i + 0] % 16) == 0);
     assert(((uintptr_t)colors->beta[i + 0] % 16) == 0);
     assert(((uintptr_t)colors->gamma[i + 0] % 16) == 0);
@@ -280,7 +280,7 @@ void oklab_avg_sse(const struct Color *restrict colors,
     assert(((uintptr_t)colors->alpha[i + 12] % 16) == 0);
     assert(((uintptr_t)colors->beta[i + 12] % 16) == 0);
     assert(((uintptr_t)colors->gamma[i + 12] % 16) == 0);
-#endif
+    #endif
     __m128 l1 = _mm_load_ps(&colors->alpha[i + 0]);
     __m128 l2 = _mm_load_ps(&colors->alpha[i + 4]);
     __m128 l3 = _mm_load_ps(&colors->alpha[i + 8]);
@@ -346,9 +346,9 @@ void oklab_avg_sse(const struct Color *restrict colors,
 void oklab_avg_sse_cw(const struct Color *restrict colors,
                       struct Color *restrict cents, uint8_t which_cent) {
   uint16_t num_col = colors->num;
-  __m128 sum_l1 = _mm_setzero_ps();
-  __m128 sum_a1 = _mm_setzero_ps();
-  __m128 sum_b1 = _mm_setzero_ps();
+  __m128   sum_l1 = _mm_setzero_ps();
+  __m128   sum_a1 = _mm_setzero_ps();
+  __m128   sum_b1 = _mm_setzero_ps();
 
   __m128 sum_l2 = _mm_setzero_ps();
   __m128 sum_a2 = _mm_setzero_ps();
@@ -366,7 +366,7 @@ void oklab_avg_sse_cw(const struct Color *restrict colors,
 
   size_t i = 0;
   for (; i + 15 < num_col; i += 16) {
-#ifdef PALETTE_DEBUG
+    #ifdef PALETTE_DEBUG
     assert(((uintptr_t)colors->alpha[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 0] % 32) == 0);
@@ -382,7 +382,7 @@ void oklab_avg_sse_cw(const struct Color *restrict colors,
     assert(((uintptr_t)colors->alpha[i + 12] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 12] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 12] % 32) == 0);
-#endif
+    #endif
     __m128 l1 = _mm_load_ps(&colors->alpha[i + 0]);
     __m128 l2 = _mm_load_ps(&colors->alpha[i + 4]);
     __m128 l3 = _mm_load_ps(&colors->alpha[i + 8]);

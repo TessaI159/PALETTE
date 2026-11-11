@@ -6,9 +6,9 @@
 #include <stdint.h>
 
 struct Color {
-  float *alpha; /* e.g. R in sRGB, L in Lab */
-  float *beta;  /* e.g. G in sRGB, a in Lab */
-  float *gamma; /* e.g. B in sRGB, b in Lab */
+  float   *alpha; /* e.g. R in sRGB, L in Lab */
+  float   *beta;  /* e.g. G in sRGB, a in Lab */
+  float   *gamma; /* e.g. B in sRGB, b in Lab */
   uint32_t num;
 };
 

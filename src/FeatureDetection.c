@@ -6,21 +6,21 @@
 #include <string.h>
 
 #if defined(_WIN32)
-#include <intrin.h>
-#include <windows.h>
+    #include <intrin.h>
+    #include <windows.h>
 #elif defined(__APPLE__)
-#include <sys/sysctl.h>
-#include <sys/types.h>
-#include <unistd.h>
-#if defined(__x86_64__)
-#include <cpuid.h>
-#endif
+    #include <sys/sysctl.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+    #if defined(__x86_64__)
+        #include <cpuid.h>
+    #endif
 #elif defined(__linux__) || defined(__unix__) || defined(__posix__)
-#include <dirent.h>
-#include <unistd.h>
-#if defined(__x86_64__) || defined(__i386__)
-#include <cpuid.h>
-#endif
+    #include <dirent.h>
+    #include <unistd.h>
+    #if defined(__x86_64__) || defined(__i386__)
+        #include <cpuid.h>
+    #endif
 #endif
 
 struct system_features_t features = {0};
@@ -28,9 +28,9 @@ struct system_features_t features = {0};
 #if defined(__linux__)
 
 static int count_directories(const char *path) {
-  DIR *dir;
+  DIR           *dir;
   struct dirent *entry;
-  int count = 0;
+  int            count = 0;
 
   dir = opendir(path);
   if (!dir) {
@@ -51,8 +51,8 @@ static int count_directories(const char *path) {
 
 static int query_file_size(const char *path) {
   FILE *fp;
-  char buff[64];
-  int size = 0;
+  char  buff[64];
+  int   size = 0;
 
   fp = fopen(path, "r");
   if (!fp)
@@ -74,8 +74,8 @@ static int query_file_size(const char *path) {
 
 static int query_file_shared(const char *path) {
   FILE *fp;
-  char buff[64];
-  int shared = -1;
+  char  buff[64];
+  int   shared = -1;
 
   fp = fopen(path, "r");
   if (!fp)
@@ -91,7 +91,7 @@ static int query_file_shared(const char *path) {
 
 static int query_file_type(const char *path) {
   FILE *fp;
-  char buff[64];
+  char  buff[64];
 
   fp = fopen(path, "r");
   if (!fp)
@@ -110,8 +110,8 @@ static int query_file_type(const char *path) {
 
 static int query_file_gen(const char *path) {
   FILE *fp;
-  char buff[64];
-  int level = -1;
+  char  buff[64];
+  int   level = -1;
 
   fp = fopen(path, "r");
   if (!fp)
@@ -133,7 +133,7 @@ static void query_logical_cores(struct system_features_t *f) {
   GetSystemInfo(&si);
   f->logical_cores = (uint8_t)si.dwNumberOfProcessors;
 #elif defined(__APPLE__)
-  int count = 0;
+  int    count = 0;
   size_t size = sizeof(count);
   if (sysctlbyname("hw.logicalcpu", &count, &size, NULL, 0) == 0) {
     f->logical_cores = (uint8_t)count;
@@ -165,7 +165,7 @@ static void query_physical_cores(struct system_features_t *f) {
   }
   free(info);
 #elif defined(__APPLE__)
-  int count = 0;
+  int    count = 0;
   size_t size = sizeof(count);
   if (sysctlbyname("hw.physicalcpu", &count, &size, NULL, 0) == 0) {
     f->physical_cores = (uint8_t)count;
@@ -179,8 +179,8 @@ static void query_physical_cores(struct system_features_t *f) {
     return;
   }
 
-  int physical_ids[256], core_ids[256], cores = 0;
-  int physical_id = -1, core_id = -1;
+  int  physical_ids[256], core_ids[256], cores = 0;
+  int  physical_id = -1, core_id = -1;
   char line[256];
 
   while (fgets(line, sizeof(line), fp)) {
@@ -228,7 +228,7 @@ static void query_cache_sizes(struct system_features_t *f) {
   for (DWORD i = 0; i < count; ++i) {
     if (info[i].Relationship == RelationCache) {
       CACHE_DESCRIPTOR *cd = &info[i].Cache;
-      int level = cd->Level;
+      int               level = cd->Level;
       f->l[level] = cd->Size;
       f->line_size = cd->LineSize;
       if (level == 2)
@@ -238,7 +238,7 @@ static void query_cache_sizes(struct system_features_t *f) {
   free(info);
 #elif defined(__APPLE__)
   uint64_t val = 0;
-  size_t size = sizeof(val);
+  size_t   size = sizeof(val);
   if (sysctlbyname("hw.l1dcachesize", &val, &size, NULL, 0) == 0)
     f->l[1] = val;
   if (sysctlbyname("hw.l2cachesize", &val, &size, NULL, 0) == 0)
@@ -252,9 +252,9 @@ static void query_cache_sizes(struct system_features_t *f) {
   f->l2_shared = true;
 #elif defined(__linux__)
   char *base = "/sys/devices/system/cpu/cpu0/cache/";
-  int dc = count_directories(base);
+  int   dc = count_directories(base);
   for (int i = 0; i < dc; ++i) {
-    char path[256];
+    char   path[256];
     size_t ps = sizeof(path);
     snprintf(path, ps, "%sindex%d/size", base, i);
     int size = query_file_size(path);
@@ -295,7 +295,7 @@ static void query_cpu_features(struct system_features_t *f) {
   int has_fma = (ecx & (1u << 12)) != 0;
 
   uint64_t xcr0 = _xgetbv(0);
-  int os_avx = ((xcr0 & 0x6) == 0x6);
+  int      os_avx = ((xcr0 & 0x6) == 0x6);
   f->avx = has_avx && ox_avx;
   f->fma3 = f->avx && has_fma;
 #elif (defined(__x86_64__) || defined(_M_X64) || defined(__i386))
@@ -304,8 +304,8 @@ static void query_cpu_features(struct system_features_t *f) {
   uint32_t ecx = regs[2];
 
   f->sse = (ecx & (1u << 10)) != 0;
-  int has_avx = (ecx & (1u << 28)) != 0;
-  int has_fma = (ecx & (1u << 12)) != 0;
+  int      has_avx = (ecx & (1u << 28)) != 0;
+  int      has_fma = (ecx & (1u << 12)) != 0;
   uint32_t xcr0_lo, xcr0_hi;
   __asm__ volatile(".byte 0x0f, 0x01, 0xd0"
                    : "=a"(xcr0_lo), "=d"(xcr0_hi)

@@ -1,5 +1,5 @@
 #ifdef PALETTE_DEBUG
-#include <assert.h>
+    #include <assert.h>
 #endif
 #include <math.h>
 #include <stdint.h>
@@ -10,16 +10,16 @@
 
 #if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__)) &&           \
     defined(__AVX__)
-#include <immintrin.h>
+    #include <immintrin.h>
 
-#define SQUARE(x) ((x) * (x))
+    #define SQUARE(x) ((x) * (x))
 
 void cielab_avg_avx(const struct Color *restrict colors,
                     struct Color *restrict cents, uint8_t which_cent) {
   uint32_t num_col = colors->num;
-  __m256 sum_l1 = _mm256_setzero_ps();
-  __m256 sum_a1 = _mm256_setzero_ps();
-  __m256 sum_b1 = _mm256_setzero_ps();
+  __m256   sum_l1 = _mm256_setzero_ps();
+  __m256   sum_a1 = _mm256_setzero_ps();
+  __m256   sum_b1 = _mm256_setzero_ps();
 
   __m256 sum_l2 = _mm256_setzero_ps();
   __m256 sum_a2 = _mm256_setzero_ps();
@@ -35,7 +35,7 @@ void cielab_avg_avx(const struct Color *restrict colors,
 
   uint32_t i;
   for (i = 0; i + 31 < num_col; i += 32) {
-#ifdef PALETTE_DEBUG
+    #ifdef PALETTE_DEBUG
     assert(((uintptr_t)colors->alpha[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 0] % 32) == 0);
@@ -51,9 +51,9 @@ void cielab_avg_avx(const struct Color *restrict colors,
     assert(((uintptr_t)colors->alpha[i + 24] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 24] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 24] % 32) == 0);
-#endif
+    #endif
 
-    int t = 0;
+    int    t = 0;
     __m256 l1 = _mm256_load_ps(&colors->alpha[i + t]);
     __m256 a1 = _mm256_load_ps(&colors->beta[i + t]);
     __m256 b1 = _mm256_load_ps(&colors->gamma[i + t]);
@@ -123,9 +123,9 @@ void cielab_avg_avx(const struct Color *restrict colors,
 void cielab_avg_avx_cw(const struct Color *restrict colors,
                        struct Color *restrict cents, uint8_t which_cent) {
   uint32_t num_col = colors->num;
-  __m256 sum_l1 = _mm256_setzero_ps();
-  __m256 sum_a1 = _mm256_setzero_ps();
-  __m256 sum_b1 = _mm256_setzero_ps();
+  __m256   sum_l1 = _mm256_setzero_ps();
+  __m256   sum_a1 = _mm256_setzero_ps();
+  __m256   sum_b1 = _mm256_setzero_ps();
 
   __m256 sum_l2 = _mm256_setzero_ps();
   __m256 sum_a2 = _mm256_setzero_ps();
@@ -143,7 +143,7 @@ void cielab_avg_avx_cw(const struct Color *restrict colors,
 
   uint32_t i = 0;
   for (; i + 31 < num_col; i += 32) {
-#ifdef PALETTE_DEBUG
+    #ifdef PALETTE_DEBUG
     assert(((uintptr_t)colors->alpha[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 0] % 32) == 0);
@@ -159,8 +159,8 @@ void cielab_avg_avx_cw(const struct Color *restrict colors,
     assert(((uintptr_t)colors->alpha[i + 12] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 12] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 12] % 32) == 0);
-#endif
-    int t = 0;
+    #endif
+    int    t = 0;
     __m256 l1 = _mm256_load_ps(&colors->alpha[i + t]);
     __m256 a1 = _mm256_load_ps(&colors->beta[i + t]);
     __m256 b1 = _mm256_load_ps(&colors->gamma[i + t]);
@@ -278,7 +278,7 @@ void oklab_avg_avx(const struct Color *restrict colors,
 
   uint32_t i;
   for (i = 0; i + 31 < num_col; i += 32) {
-#ifdef PALETTE_DEBUG
+    #ifdef PALETTE_DEBUG
     assert(((uintptr_t)colors->alpha[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 0] % 32) == 0);
@@ -294,7 +294,7 @@ void oklab_avg_avx(const struct Color *restrict colors,
     assert(((uintptr_t)colors->alpha[i + 24] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 24] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 24] % 32) == 0);
-#endif
+    #endif
 
     __m256 l1 = _mm256_load_ps(&colors->alpha[i + 0]);
     __m256 l2 = _mm256_load_ps(&colors->alpha[i + 8]);
@@ -385,7 +385,7 @@ void oklab_avg_avx_cw(const struct Color *restrict colors,
 
   uint32_t i = 0;
   for (; i + 31 < num_col; i += 32) {
-#ifdef PALETTE_DEBUG
+    #ifdef PALETTE_DEBUG
     assert(((uintptr_t)colors->alpha[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 0] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 0] % 32) == 0);
@@ -401,8 +401,8 @@ void oklab_avg_avx_cw(const struct Color *restrict colors,
     assert(((uintptr_t)colors->alpha[i + 12] % 32) == 0);
     assert(((uintptr_t)colors->beta[i + 12] % 32) == 0);
     assert(((uintptr_t)colors->gamma[i + 12] % 32) == 0);
-#endif
-    int t = 0;
+    #endif
+    int    t = 0;
     __m256 l1 = _mm256_load_ps(&colors->alpha[i + t]);
     __m256 a1 = _mm256_load_ps(&colors->beta[i + t]);
     __m256 b1 = _mm256_load_ps(&colors->gamma[i + t]);

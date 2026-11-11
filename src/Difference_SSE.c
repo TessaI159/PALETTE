@@ -1,5 +1,5 @@
 #ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
+    #define _USE_MATH_DEFINES
 #endif
 #include <math.h>
 
@@ -7,15 +7,17 @@
 
 #include "Difference_Internal.h"
 #if defined(__x86_64) || defined(_M_X64) || defined(__i386__)
-#include "Math_SSE.h"
+    #include "Math_SSE.h"
 
-#define SQUARE_SCALAR(x) ((x) * (x))
-#define POW_7_SCALAR(x) ((x) * (x) * (x) * (x) * (x) * (x) * (x))
-#define DEG2RAD(x) (((x) / (180.0)) * (M_PI))
-#define RAD2DEG(x) (((x) / M_PI) * (180.0))
-#define FL_PER_VEC 4
+    #define SQUARE_SCALAR(x) ((x) * (x))
+    #define POW_7_SCALAR(x) ((x) * (x) * (x) * (x) * (x) * (x) * (x))
+    #define DEG2RAD(x) (((x) / (180.0)) * (M_PI))
+    #define RAD2DEG(x) (((x) / M_PI) * (180.0))
+    #define FL_PER_VEC 4
 
-static inline __m128 V(float x) { return _mm_set1_ps(x); }
+static inline __m128 V(float x) {
+  return _mm_set1_ps(x);
+}
 
 static inline void
 compute_tail(const struct Color *restrict colors,
@@ -24,8 +26,8 @@ compute_tail(const struct Color *restrict colors,
                                   const struct Color *restrict, int, int)) {
   const uint32_t num_col = colors->num;
   const uint32_t num_cent = cents->num;
-  size_t col_not_comp = num_col - (num_col % FL_PER_VEC);
-  size_t cent_not_comp = num_cent - (num_cent % FL_PER_VEC);
+  size_t         col_not_comp = num_col - (num_col % FL_PER_VEC);
+  size_t         cent_not_comp = num_cent - (num_cent % FL_PER_VEC);
   for (size_t i = col_not_comp; i < num_col; ++i) {
     for (size_t j = 0; j < num_cent; ++j) {
       diffs[j * num_col + i] = scalar_diff(colors, cents, i, j);
@@ -204,18 +206,18 @@ void delta_cie94_diff_sse(const struct Color *restrict colors,
                           float *restrict diffs) {
   const uint32_t num_col = colors->num;
   const uint32_t num_cent = cents->num;
-  const __m128 K1 = V(0.045);
-  const __m128 K2 = V(0.015);
-  const __m128 zero = V(0.0f);
+  const __m128   K1 = V(0.045);
+  const __m128   K2 = V(0.015);
+  const __m128   zero = V(0.0f);
 
   for (size_t i = 0; i + FL_PER_VEC <= num_col; i += FL_PER_VEC) {
     for (size_t j = 0; j + FL_PER_VEC <= num_cent; j += FL_PER_VEC) {
-      __m128 co_l = _mm_loadu_ps(&colors->alpha[i]);
-      __m128 co_a = _mm_loadu_ps(&colors->beta[i]);
-      __m128 co_b = _mm_loadu_ps(&colors->gamma[i]);
-      __m128 ce_l = _mm_loadu_ps(&cents->alpha[j]);
-      __m128 ce_a = _mm_loadu_ps(&cents->beta[j]);
-      __m128 ce_b = _mm_loadu_ps(&cents->gamma[j]);
+      __m128       co_l = _mm_loadu_ps(&colors->alpha[i]);
+      __m128       co_a = _mm_loadu_ps(&colors->beta[i]);
+      __m128       co_b = _mm_loadu_ps(&colors->gamma[i]);
+      __m128       ce_l = _mm_loadu_ps(&cents->alpha[j]);
+      __m128       ce_a = _mm_loadu_ps(&cents->beta[j]);
+      __m128       ce_b = _mm_loadu_ps(&cents->gamma[j]);
       const __m128 dl = _mm_sub_ps(co_l, ce_l);
       const __m128 da = _mm_sub_ps(co_a, ce_a);
       const __m128 db = _mm_sub_ps(co_b, ce_b);
@@ -248,11 +250,11 @@ void delta_ciede2000_diff_sse(const struct Color *restrict colors,
                               float *restrict diffs) {
   const uint32_t num_col = colors->num;
   const uint32_t num_cent = cents->num;
-  const __m128 zero = V(0.0f);
-  const __m128 one = V(1.0f);
-  const __m128 two = V(2.0f);
-  const __m128 c180 = V(180.0f);
-  const __m128 c360 = V(360.0f);
+  const __m128   zero = V(0.0f);
+  const __m128   one = V(1.0f);
+  const __m128   two = V(2.0f);
+  const __m128   c180 = V(180.0f);
+  const __m128   c360 = V(360.0f);
 
   for (size_t i = 0; i + FL_PER_VEC <= num_col; i += FL_PER_VEC) {
     for (size_t j = 0; j + FL_PER_VEC <= num_cent; j += FL_PER_VEC) {
@@ -292,7 +294,7 @@ void delta_ciede2000_diff_sse(const struct Color *restrict colors,
       /* Step 2: Find dLp, dCp, dHp */
       const __m128 dLp = _mm_sub_ps(L2, L1);
       const __m128 dCp = _mm_sub_ps(C2p, C1p);
-      __m128 dhp = _mm_setzero_ps();
+      __m128       dhp = _mm_setzero_ps();
       mask = _mm_and_ps(_mm_cmpneq_ps(_mm_mul_ps(C1p, C2p), zero),
                         _mm_cmple_ps(_mm_abs_ps(_mm_sub_ps(h2p, h1p)), c180));
       dhp = _mm_blendv_ps(dhp, _mm_sub_ps(h2p, h1p), mask);

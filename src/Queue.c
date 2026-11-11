@@ -78,7 +78,9 @@ bool Queue_is_full(const struct Queue *q) {
   return ((q->tail + 1) & (q->mask)) == q->head;
 }
 
-bool Queue_is_empty(const struct Queue *q) { return (q->tail == q->head); }
+bool Queue_is_empty(const struct Queue *q) {
+  return (q->tail == q->head);
+}
 
 size_t Queue_empty_slots(const struct Queue *q) {
   return ((q->head - q->tail - 1) & q->mask);

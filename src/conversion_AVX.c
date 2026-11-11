@@ -3,7 +3,7 @@
 
 #if (defined(__x86_64__) || defined(_M_X64) || defined(__i386)) &&             \
     defined(__AVX)
-#include <immintrin.h>
+    #include <immintrin.h>
 
 /* Default to SSE even if AVX is available for now to resolve linker
  * issues */

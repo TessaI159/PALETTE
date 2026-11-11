@@ -16,26 +16,24 @@ static void (*oklab_to_srgb_intern)(struct Color *restrict);
 static void (*cielab_to_srgb_intern)(struct Color *restrict);
 
 static void (*conversion_table[INST_SETS][SPACES][SPACES])(
-    struct Color *restrict) =
-    {[AVX] =
-         {[OK] = {[OK] = NULL, [CIE] = NULL, [SRGB] = _mm256_oklab_to_srgb_ps},
-          [CIE] =
-              {[OK] = NULL, [CIE] = NULL, [SRGB] = _mm256_cielab_to_srgb_ps},
-          [SRGB] = {[OK] = _mm256_srgb_to_oklab_ps,
-                    [CIE] = _mm256_srgb_to_cielab_ps,
-                    [SRGB] = NULL}},
-     [SSE] =
-         {[OK] = {[OK] = NULL, [CIE] = NULL, [SRGB] = cvt_mm_oklab_to_srgb_ps},
-          [CIE] =
-              {[OK] = NULL, [CIE] = NULL, [SRGB] = cvt_mm_cielab_to_srgb_ps},
-          [SRGB] = {[OK] = cvt_mm_srgb_to_oklab_ps,
-                    [CIE] = cvt_mm_srgb_to_cielab_ps,
-                    [SRGB] = NULL}},
-     [FB] = {[OK] = {[OK] = NULL, [CIE] = NULL, [SRGB] = oklab_to_srgb_fb},
-             [CIE] = {[OK] = NULL, [CIE] = NULL, [SRGB] = cielab_to_srgb_fb},
-             [SRGB] = {[OK] = srgb_to_oklab_fb,
-                       [CIE] = srgb_to_cielab_fb,
-                       [SRGB] = NULL}}};
+    struct Color *restrict) = {
+    [AVX] =
+        {[OK] = {[OK] = NULL, [CIE] = NULL, [SRGB] = _mm256_oklab_to_srgb_ps},
+         [CIE] = {[OK] = NULL, [CIE] = NULL, [SRGB] = _mm256_cielab_to_srgb_ps},
+         [SRGB] = {[OK] = _mm256_srgb_to_oklab_ps,
+                   [CIE] = _mm256_srgb_to_cielab_ps,
+                   [SRGB] = NULL}},
+    [SSE] =
+        {[OK] = {[OK] = NULL, [CIE] = NULL, [SRGB] = cvt_mm_oklab_to_srgb_ps},
+         [CIE] = {[OK] = NULL, [CIE] = NULL, [SRGB] = cvt_mm_cielab_to_srgb_ps},
+         [SRGB] = {[OK] = cvt_mm_srgb_to_oklab_ps,
+                   [CIE] = cvt_mm_srgb_to_cielab_ps,
+                   [SRGB] = NULL}},
+    [FB] = {[OK] = {[OK] = NULL, [CIE] = NULL, [SRGB] = oklab_to_srgb_fb},
+            [CIE] = {[OK] = NULL, [CIE] = NULL, [SRGB] = cielab_to_srgb_fb},
+            [SRGB] = {[OK] = srgb_to_oklab_fb,
+                      [CIE] = srgb_to_cielab_fb,
+                      [SRGB] = NULL}}};
 
 static inline void conversion_init(void) {
   enum InstSet inst = FB;

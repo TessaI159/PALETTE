@@ -10,4 +10,4 @@
 // Returns number of fields parsed, or -1 on error.
 int csv_parse_line(char *line, char **fields, int max_fields);
 
-#endif // CSV_PARSER_H
+#endif  // CSV_PARSER_H

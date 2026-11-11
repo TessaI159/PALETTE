@@ -2,7 +2,7 @@
 #include <string.h>
 
 int csv_parse_line(char *line, char **fields, int max_fields) {
-  int field_count = 0;
+  int   field_count = 0;
   char *ptr = line;
 
   while (*ptr && field_count < max_fields) {
@@ -37,7 +37,7 @@ int csv_parse_line(char *line, char **fields, int max_fields) {
   }
 
   if (*ptr != '\0')
-    return -1; // Too many fields
+    return -1;  // Too many fields
   while (field_count < max_fields)
     fields[field_count++] = NULL;
   return field_count;

@@ -18,7 +18,7 @@
 
 void srgb_linearize(struct Color *restrict colors) {
   const static double threshold = 0.04045;
-  const uint32_t num_col = colors->num;
+  const uint32_t      num_col = colors->num;
   for (uint32_t i = 0; i < num_col; ++i) {
 
     const double r = colors->alpha[i];
@@ -35,7 +35,7 @@ void srgb_linearize(struct Color *restrict colors) {
 
 void srgb_gamma_correct(struct Color *restrict const colors) {
   const static double threshold = 0.0031308;
-  const uint32_t num_col = colors->num;
+  const uint32_t      num_col = colors->num;
   for (uint32_t i = 0; i < num_col; ++i) {
     const double r = colors->alpha[i];
     const double g = colors->beta[i];
@@ -87,9 +87,9 @@ void srgb_to_oklab_fb(struct Color *restrict colors) {
     const double r = colors->alpha[i];
     const double g = colors->beta[i];
     const double b = colors->gamma[i];
-    double l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
-    double m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
-    double s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+    double       l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+    double       m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+    double       s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
     l = cbrt(l);
     m = cbrt(m);
     s = cbrt(s);
@@ -107,9 +107,9 @@ void oklab_to_srgb_fb(struct Color *restrict colors) {
     const double l = colors->alpha[i];
     const double a = colors->beta[i];
     const double b = colors->gamma[i];
-    double l_ = l + 0.3963377774 * a + 0.2158037573 * b;
-    double m_ = l - 0.1055613458 * a - 0.0638541728 * b;
-    double s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+    double       l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+    double       m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+    double       s_ = l - 0.0894841775 * a - 1.2914855480 * b;
 
     l_ = CUBE(l_);
     m_ = CUBE(m_);
@@ -149,7 +149,7 @@ void srgb_to_cielab_fb(struct Color *restrict colors) {
 
 /* CIELAB -> Linear sRGB [0, 1] */
 void cielab_to_srgb_fb(struct Color *restrict colors) {
-  const uint32_t num_col = colors->num;
+  const uint32_t      num_col = colors->num;
   const static double delta = 6.0 / 29.0;
   const static double delta2 = SQUARE(delta);
   const static double delta3 = CUBE(delta);
