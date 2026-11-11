@@ -6,6 +6,31 @@
 	"patch": 0
     },
     "configurePresets": [
+	{
+	    "name": "macos-debug",
+	    "displayName": "macOS debug",
+	    "description": "macOS debug build with unit tests enabled",
+	    "binaryDir": "${sourceDir}/build_macos_debug",
+	    "generator": "Unix Makefiles",
+	    "cacheVariables": {
+		"CMAKE_BUILD_TYPE": "Debug",
+		"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+		"PALETTE_BUILD_TESTS": true
+		
+	    }
+	},
+	{
+	    "name": "macos-release",
+	    "displayName": "macOS release",
+	    "description": "macoOS release build",
+	    "binaryDir": "${sourceDir}/build_macos_release",
+	    "generator": "Unix Makefiles",
+	    "cacheVariables": {
+		"CMAKE_BUILD_TYPE": "Release",
+		"PALETTE_BUILD_TESTS": false,
+		"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+	    }
+	},
         {
             "name": "linux-debug",
             "displayName": "Linux debug",
@@ -46,6 +71,14 @@
 	}
     ],
     "buildPresets": [
+	{
+	    "name": "build-macos-debug",
+	    "configurePreset": "macos-debug"
+	},
+	{
+	    "name": "build-macos-release",
+	    "configurePreset": "macos-release"
+	},
 	{
 	    "name": "build-linux-debug",
 	    "configurePreset": "linux-debug"

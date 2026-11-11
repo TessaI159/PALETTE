@@ -75,7 +75,7 @@ set(SSE_SOURCES
 )
 
 if(MSVC)
-  set_source_files_properties(${AVX_SOURCES} PROPERTIES COMPILE_FLAGS "/arch:AVX")
+  set_source_files_properties(${AVX_SOURCES} PROPERTIES COMPILE_FLAGS "/arch:AVX2")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i[3-6]86")
   set_source_files_properties(${AVX_SOURCES} PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
   set_source_files_properties(${SSE_SOURCES} PROPERTIES COMPILE_FLAGS "-msse4.1")
@@ -88,9 +88,8 @@ list(FILTER IMPL_SOURCES EXCLUDE REGEX "/\\.#[^/]*$")
 list(FILTER SOURCES EXCLUDE REGEX "/src/test/.*\\.c$")
 list(FILTER SOURCES EXCLUDE REGEX "/src/trig_test\\.c$")
 list(FILTER SOURCES EXCLUDE REGEX "/src/pow_speed_test\\.c$")
-if(NOT FFMPEG_FOUND)
-  list(FILTER SOURCES EXCLUDE REGEX "/src/Video\\.c$")
-endif()
+
+
 
 add_executable(PALETTE ${SOURCES})
 
@@ -136,9 +135,7 @@ if(PALETTE_BUILD_TESTS)
   list(FILTER IMPL_SOURCES EXCLUDE REGEX "/src/pow_speed_test\\.c$")
   list(FILTER IMPL_SOURCES EXCLUDE REGEX "/src/main\\.c$")
   list(FILTER IMPL_SOURCES EXCLUDE REGEX "/src/test/.*\\.c$")
-  if(NOT FFMPEG_FOUND)
-    list(FILTER IMPL_SOURCES EXCLUDE REGEX "/src/Video\\.c$")
-  endif()
+
 
   file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS src/test/*.c)
   list(FILTER SOURCES EXCLUDE REGEX "/\\.#[^/]*$")
